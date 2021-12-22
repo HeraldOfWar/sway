@@ -1,6 +1,7 @@
 import pygame
 import sqlite3
 import os
+import sys
 
 database = os.path.join('data', 'card_db.db')
 PLAYCARDS_DATA = sqlite3.connect(database).cursor().execute("""SELECT fraction, name, specialization, 
