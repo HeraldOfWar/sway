@@ -80,6 +80,7 @@ def choose_fraction():
 
 
 def cards_info():
+    global info_sprites
     screen.blit(cinf_fon, (0, 0))
     pygame.draw.rect(screen, pygame.Color('black'), exit_button, 3)
     pygame.draw.line(screen, pygame.Color('black'), (width - 60, 25), (width - 30, 55), 5)
@@ -91,6 +92,7 @@ def cards_info():
     info_sprites.add(playcards)
     info_sprites.add(bonuscards)
     info_sprites.draw(screen)
+    old_screen, old_info_sprites = screen.copy(), info_sprites.copy()
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -107,20 +109,37 @@ def cards_info():
                         info_sprites.empty()
                         return choose_fraction()
                     elif playcards.rect.collidepoint(event.pos):
-                        pygame.time.wait(150)
-                        screen2 = pygame.Surface(screen.get_size())
-                        screen2.blit(cinf_fon, (0, 0))
-                        load_cardlist(screen2, 0)
-                        screen.blit(screen2, (0, 0))
-                        info_sprites.draw(screen)
+                        if playcards in info_sprites:
+                            pygame.time.wait(150)
+                            screen2 = pygame.Surface(screen.get_size())
+                            screen2.blit(cinf_fon, (0, 0))
+                            load_cardlist(screen2, 0)
+                            screen.blit(screen2, (0, 0))
+                            info_sprites.draw(screen)
+                            old_screen = screen.copy()
+                            old_info_sprites = info_sprites.copy()
                     elif bonuscards.rect.collidepoint(event.pos):
+                        if bonuscards in info_sprites:
+                            pygame.time.wait(150)
+                            screen2 = pygame.Surface(screen.get_size())
+                            screen2.blit(cinf_fon, (0, 0))
+                            load_cardlist(screen2, 1)
+                            screen.blit(screen2, (0, 0))
+                            info_sprites.draw(screen)
+                            old_screen = screen.copy()
+                            old_info_sprites = info_sprites.copy()
+                    elif escape_button.collidepoint(event.pos):
                         pygame.time.wait(150)
-                        screen2 = pygame.Surface(screen.get_size())
-                        screen2.blit(cinf_fon, (0, 0))
-                        load_cardlist(screen2, 1)
-                        screen.blit(screen2, (0, 0))
+                        screen.blit(old_screen, (0, 0))
+                        info_sprites.clear(screen, cinf_fon)
+                        info_sprites = old_info_sprites.copy()
                         info_sprites.draw(screen)
-                    info_sprites.update(event)
+                    else:
+                        for sprite in info_sprites:
+                            if sprite.rect.collidepoint(event.pos):
+                                pygame.time.wait(150)
+                                old_info_sprites = info_sprites.copy()
+                                sprite.get_info(screen, cinf_fon, exit_button, escape_button, info_sprites)
         pygame.display.flip()
 
 
@@ -160,10 +179,12 @@ def sprites_initialization():
 
     for i in range(len(BONUSCARDS)):
         BONUSCARDS[i].image = pygame.transform.scale(BONUSCARDS[i].image, (150, 225))
+        BONUSCARDS[i].rect = BONUSCARDS[i].image.get_rect()
         BONUSCARDS[i].rect.x = 5 + 160 * ((i % 5) % 3)
         BONUSCARDS[i].rect.y = 200 + 275 * ((i % 5) // 3)
     for i in range(len(PLAYCARDS)):
         PLAYCARDS[i].image = pygame.transform.scale(PLAYCARDS[i].image, (150, 225))
+        PLAYCARDS[i].rect = PLAYCARDS[i].image.get_rect()
         PLAYCARDS[i].rect.x = 5 + 160 * ((i % 6) % 3)
         PLAYCARDS[i].rect.y = 200 + 275 * ((i % 6) // 3)
 
@@ -200,6 +221,7 @@ if __name__ == '__main__':
 
     play_button = pygame.Rect(145, 580, 180, 180)
     exit_button = pygame.Rect(width - 70, 15, 50, 50)
+    escape_button = pygame.Rect(20, 15, 80, 50)
 
     konohagakure, ivagakure = pygame.sprite.Sprite(cf_sprites), pygame.sprite.Sprite(cf_sprites)
     info_1, info_2 = pygame.sprite.Sprite(cf_sprites), pygame.sprite.Sprite(cf_sprites)
