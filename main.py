@@ -44,6 +44,13 @@ def start_screen():
                     if play_button.collidepoint(event.pos):
                         pygame.time.wait(150)
                         return choose_fraction()
+            elif event.type == pygame.MOUSEMOTION:
+                if play_button.collidepoint(event.pos):
+                    pygame.draw.rect(screen, pygame.Color('white'), play_button, 10, 15)
+                    pygame.draw.polygon(screen, pygame.Color('white'), ((190, 620), (190, 720), (295, 670)))
+                else:
+                    pygame.draw.rect(screen, pygame.Color('black'), play_button, 10, 15)
+                    pygame.draw.polygon(screen, pygame.Color('black'), ((190, 620), (190, 720), (295, 670)))
         pygame.display.flip()
 
 
@@ -93,6 +100,7 @@ def cards_info():
     info_sprites.add(bonuscards)
     info_sprites.draw(screen)
     old_screen, old_info_sprites = screen.copy(), info_sprites.copy()
+    f = False
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -102,6 +110,23 @@ def cards_info():
                     pygame.time.wait(150)
                     info_sprites.empty()
                     return choose_fraction()
+            elif event.type == pygame.MOUSEMOTION:
+                if escape_button.collidepoint(event.pos) and f:
+                    pygame.draw.rect(screen, pygame.Color('white'), escape_button, 3)
+                    pygame.draw.rect(screen, pygame.Color('white'), (45, 32, 45, 16))
+                    pygame.draw.polygon(screen, pygame.Color('white'), ((30, 40), (55, 25), (55, 55)))
+                elif f:
+                    pygame.draw.rect(screen, pygame.Color('black'), escape_button, 3)
+                    pygame.draw.rect(screen, pygame.Color('black'), (45, 32, 45, 16))
+                    pygame.draw.polygon(screen, pygame.Color('black'), ((30, 40), (55, 25), (55, 55)))
+                if exit_button.collidepoint(event.pos):
+                    pygame.draw.rect(screen, pygame.Color('white'), exit_button, 3)
+                    pygame.draw.line(screen, pygame.Color('white'), (width - 60, 25), (width - 30, 55), 5)
+                    pygame.draw.line(screen, pygame.Color('white'), (width - 30, 25), (width - 60, 55), 5)
+                else:
+                    pygame.draw.rect(screen, pygame.Color('black'), exit_button, 3)
+                    pygame.draw.line(screen, pygame.Color('black'), (width - 60, 25), (width - 30, 55), 5)
+                    pygame.draw.line(screen, pygame.Color('black'), (width - 30, 25), (width - 60, 55), 5)
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == pygame.BUTTON_LEFT:
                     if exit_button.collidepoint(event.pos):
@@ -133,12 +158,14 @@ def cards_info():
                         screen.blit(old_screen, (0, 0))
                         info_sprites.clear(screen, cinf_fon)
                         info_sprites = old_info_sprites.copy()
+                        f = False
                         info_sprites.draw(screen)
                     else:
                         for sprite in info_sprites:
                             if sprite.rect.collidepoint(event.pos):
                                 pygame.time.wait(150)
                                 old_info_sprites = info_sprites.copy()
+                                f = True
                                 sprite.get_info(screen, cinf_fon, exit_button, escape_button, info_sprites)
         pygame.display.flip()
 
@@ -219,7 +246,7 @@ if __name__ == '__main__':
     pc_img, bc_img = load_image('back_and_buttons', 'playcards.png'), \
                      load_image('back_and_buttons', 'bonuscards.png')
 
-    play_button = pygame.Rect(145, 580, 180, 180)
+    play_button = pygame.Rect((145, 580, 180, 180))
     exit_button = pygame.Rect(width - 70, 15, 50, 50)
     escape_button = pygame.Rect(20, 15, 80, 50)
 

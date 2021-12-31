@@ -4,6 +4,9 @@ import os
 import sys
 
 database = os.path.join('data', 'card_db.db')
+fonts = os.path.join('resources', 'fonts')
+title_font = os.path.join(fonts, 'rusmadeinchinav2.ttf')
+main_font = os.path.join(fonts, 'HanZi.ttf')
 PLAYCARDS_DATA = sqlite3.connect(database).cursor().execute("""SELECT id, fraction, name, short_name, 
                         specialization, pace, chakra, resistance, health, technic, synergy FROM playcards""")
 BONUSCARDS_DATA = sqlite3.connect(database).cursor().execute("""SELECT id, fraction, name, 
@@ -16,12 +19,9 @@ b_images = ['bar.jpg', 'himera.jpg', 'tsunami.jpg', 'king_mouse.jpg', 'ren.jpg',
 PLAYCARDS, BONUSCARDS, P_SECOND_INFO, B_SECOND_INFO = [], [], [], []
 
 pygame.font.init()
-b_font = pygame.font.Font('resources/fonts/rusmadeinchinav2.ttf', 26)
-b_font1 = pygame.font.Font('resources/fonts/rusmadeinchinav2.ttf', 30)
-font = pygame.font.Font('resources/fonts/HanZi.ttf', 14)
-font1 = pygame.font.Font('resources/fonts/HanZi.ttf', 12)
-font2 = pygame.font.Font('resources/fonts/HanZi.ttf', 10)
-font3 = pygame.font.Font('resources/fonts/HanZi.ttf', 8)
+b_font, b_font1 = pygame.font.Font(title_font, 26), pygame.font.Font(title_font, 30)
+font, font1 = pygame.font.Font(main_font, 14), pygame.font.Font(main_font, 12)
+font2, font3 = pygame.font.Font(main_font, 10), pygame.font.Font(main_font, 8)
 
 
 def load_image(name, colorkey=None):
