@@ -3,33 +3,37 @@ import pygame
 from system_func import load_image
 from constants import *
 
-"""Класс игровой карты"""
+
 class PlayCard(pygame.sprite.Sprite):
+    """Класс игровой карты"""
 
     def __init__(self, image, id, fraction, name, short_name, spec, pace, chakra,
                  resist, health, technic, synergy):
-        super().__init__()
-        self.image = load_image(CARDS, image)
-        self.id = id
-        self.fraction = fraction
-        self.name = name
-        self.short_name = short_name
-        self.spec = spec
-        self.pace = pace
-        self.chakra = chakra
-        self.resist = resist
-        self.health = health
-        self.technic = technic.split()
-        self.synergy = synergy
-        self.damage = self.pace + self.chakra + int(self.technic[0])
-        self.rect = self.image.get_rect()
-
+        """Инициализация основных характеристик карты"""
+        super().__init__() # инициализация родительского класса спрайта
+        self.image = load_image(CARDS, image) # изображение карты
+        self.id = id # идентификатор
+        self.fraction = fraction # принадлежность фракции
+        self.name = name # имя
+        self.short_name = short_name # короткое имя
+        self.spec = spec # специализация
+        self.pace = pace # скорость
+        self.chakra = chakra # запасы чакры (энергии)
+        self.resist = resist # стойкость (сопротивление)
+        self.health = health # здоровье
+        self.technic = technic.split() # техника (урон и вид)
+        self.synergy = synergy # связь с другими картами (увеличивает урон)
+        self.damage = self.pace + self.chakra + int(self.technic[0]) # урон складывается из трёх показателей
+        self.rect = self.image.get_rect() # размеры карты
 
     def update(self, *args):
+        """Реализация пассивной способности"""
         pass
 
-    """Выдача информации о карте"""
     def get_info(self, *args):
+        """Выдача информации о карте"""
+
+        """Предварительная отрисовка всех границ и прямоугольников"""
         pygame.draw.rect(screen, pygame.Color('black'), (8, 160, 464, 246), 3)
         pygame.draw.rect(screen, pygame.Color('black'), (8, 405, 464, 45), 3)
         pygame.draw.rect(screen, pygame.Color('black'), (8, 449, 232, 44), 3)
@@ -41,6 +45,7 @@ class PlayCard(pygame.sprite.Sprite):
         pygame.draw.rect(screen, pygame.Color('black'), (8, 405, 464, 444), 3)
         pygame.draw.rect(screen, pygame.Color('black'), (8, 405, 464, 290), 3)
 
+        """Создание текста и установка координат"""
         img_coord = self.rect.copy()
         img_coord.center = pygame.Rect((8, 160, 465, 245)).center
         title = b_font2.render(f'{self.name}, ({self.spec})', 1, pygame.Color('black'))
@@ -61,7 +66,7 @@ class PlayCard(pygame.sprite.Sprite):
         damage = font.render(f'Урон: {self.damage}', 1, pygame.Color('black'))
         damage_coord = damage.get_rect()
         damage_coord.center = pygame.Rect((8, 536, 232, 44)).center
-        if len(self.synergy) > 10:
+        if len(self.synergy) > 10: # установка размера в зависимости от длины текста
             synergy = font1.render(f'Синергия: {self.synergy}', 1, pygame.Color('black'))
         else:
             synergy = font.render(f'Синергия: {self.synergy}', 1, pygame.Color('black'))
@@ -74,7 +79,7 @@ class PlayCard(pygame.sprite.Sprite):
         technic_info1, passive_ability_info1 = '', ''
         technic_info, passive_ability_info = [], []
 
-        for i in range(len(old_technic_info)):
+        for i in range(len(old_technic_info)): # разделение описания техники по строкам
             technic_info1 += old_technic_info[i]
             if len(technic_info1) % 57 == 0:
                 technic_info.append(technic_info1.strip())
@@ -82,7 +87,7 @@ class PlayCard(pygame.sprite.Sprite):
             elif i == len(old_technic_info) - 1:
                 technic_info.append(technic_info1.strip())
 
-        for i in range(len(old_passive_ability_info)):
+        for i in range(len(old_passive_ability_info)): # разделение описания пассивной способности по строкам
             passive_ability_info1 += old_passive_ability_info[i]
             if len(passive_ability_info1) % 57 == 0:
                 passive_ability_info.append(passive_ability_info1.strip())
@@ -90,6 +95,7 @@ class PlayCard(pygame.sprite.Sprite):
             elif i == len(old_passive_ability_info) - 1:
                 passive_ability_info.append(passive_ability_info1.strip())
 
+        "Вывод всей информации в окне"
         screen.blit(self.image, img_coord)
         screen.blit(title, title_coord)
         screen.blit(pace, pace_coord)
@@ -100,23 +106,25 @@ class PlayCard(pygame.sprite.Sprite):
         screen.blit(synergy, synergy_coord)
         screen.blit(technic, (16, 586))
         screen.blit(passive_ability, (16, 700))
-        for i in range(len(technic_info)):
+        for i in range(len(technic_info)): # построчный вывод описания техники
             line = font2.render(technic_info[i], 1, pygame.Color('black'))
             y = 615 + 20 * i
             screen.blit(line, (16, y))
-        for i in range(len(passive_ability_info)):
+        for i in range(len(passive_ability_info)): # посторочный вывод описания пассивной способности
             line = font2.render(passive_ability_info[i], 1, pygame.Color('black'))
             y = 729 + 20 * i
             screen.blit(line, (16, y))
 
     def __str__(self):
+        """Представление объекта карты в виде строки"""
         return self.short_name
 
 
-"""Класс бонусной карты"""
 class BonusCard(pygame.sprite.Sprite):
+    """Класс бонусной карты"""
 
     def __init__(self, image, id, fraction, name, short_name):
+        """Инициализация основных характеристик карты"""
         super().__init__()
         self.image = load_image(CARDS, image)
         self.id = id
@@ -126,10 +134,11 @@ class BonusCard(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
 
     def update(self):
+        """Реализация эффекта карты"""
         pass
 
-    """Выдача информации о карте"""
     def get_info(self):
+        """Выдача информации о карте"""
         pygame.draw.rect(screen, pygame.Color('black'), (8, 160, 464, 245), 3)
         pygame.draw.rect(screen, pygame.Color('black'), (8, 404, 464, 50), 3)
         pygame.draw.rect(screen, pygame.Color('black'), (8, 453, 464, 393), 3)

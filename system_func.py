@@ -2,17 +2,17 @@ import sys, os
 import pygame
 
 
-"""Загрузка изображений"""
 def load_image(directory, name, colorkey=None):
-    fullname = os.path.join(directory, name)
-    if not os.path.isfile(fullname):
-        print(f"Файл с изображением '{fullname}' не найден")
+    """Загрузка изображений"""
+    fullname = os.path.join(directory, name) # путь к изображению
+    if not os.path.isfile(fullname): # если указанный путь неверный, осуществляется выход из игры
+        print(f"Файл с изображением '{fullname}' не найден") # и выводится соответсвующий текст в консоль
         sys.exit()
-    image = pygame.image.load(fullname)
+    image = pygame.image.load(fullname) # если всё правильно, то загружается изображение
     return image
 
 
-"""Выход из игры"""
 def terminate():
+    """Выход из игры"""
     pygame.quit()
     sys.exit()
