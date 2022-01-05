@@ -1,30 +1,32 @@
-import sys, os
 import pygame
 from system_func import load_image
 from constants import *
 
 
 class PlayCard(pygame.sprite.Sprite):
-    """Класс игровой карты"""
+    """Класс игровой карты, наследуемый от sprite.Sprite"""
 
-    def __init__(self, image, id, fraction, name, short_name, spec, pace, chakra,
-                 resist, health, technic, synergy):
+    def __init__(self, image, args, *group):
         """Инициализация основных характеристик карты"""
-        super().__init__() # инициализация родительского класса спрайта
-        self.image = load_image(CARDS, image) # изображение карты
-        self.id = id # идентификатор
-        self.fraction = fraction # принадлежность фракции
-        self.name = name # имя
-        self.short_name = short_name # короткое имя
-        self.spec = spec # специализация
-        self.pace = pace # скорость
-        self.chakra = chakra # запасы чакры (энергии)
-        self.resist = resist # стойкость (сопротивление)
-        self.health = health # здоровье
-        self.technic = technic.split() # техника (урон и вид)
-        self.synergy = synergy # связь с другими картами (увеличивает урон)
-        self.damage = self.pace + self.chakra + int(self.technic[0]) # урон складывается из трёх показателей
-        self.rect = self.image.get_rect() # размеры карты
+        super().__init__(group)  # инициализация родительского класса спрайта
+        self.image = load_image(CARDS, image)  # изображение карты
+        self.id = args[0]  # идентификатор
+        self.fraction = args[1]  # принадлежность фракции
+        self.name = args[2]  # имя
+        self.short_name = args[3]  # короткое имя
+        self.spec = args[4]  # специализация
+        self.pace = args[5]  # скорость
+        self.chakra = args[6]  # запасы чакры (энергии)
+        self.resist = args[7]  # стойкость (сопротивление)
+        self.health = args[8]  # здоровье
+        self.technic = args[9].split()  # техника (урон и вид)
+        self.synergy = args[10]  # связь с другими картами (увеличивает урон)
+        self.damage = self.pace + self.chakra + int(self.technic[0])  # урон складывается из трёх показателей
+        self.isalive = True  # параметр, отвечающий за то, жива ли карта или нет
+        self.rect = self.image.get_rect()  # размеры карты
+        self.info_image = self.image  # изображение для выдачи информации о карте
+        self.deck_image = load_image(CARDS, f'deck_{self.short_name}.jpg')  # изображение "в руке"
+        self.battle_image = load_image(CARDS, f'battle_{self.short_name}.jpg')  # изображение на боевой точке
 
     def update(self, *args):
         """Реализация пассивной способности"""
@@ -46,7 +48,7 @@ class PlayCard(pygame.sprite.Sprite):
         pygame.draw.rect(screen, pygame.Color('black'), (8, 405, 464, 290), 3)
 
         """Создание текста и установка координат"""
-        img_coord = self.rect.copy()
+        img_coord = self.info_image.get_rect()
         img_coord.center = pygame.Rect((8, 160, 465, 245)).center
         title = b_font2.render(f'{self.name}, ({self.spec})', 1, pygame.Color('black'))
         title_coord = title.get_rect()
@@ -66,7 +68,7 @@ class PlayCard(pygame.sprite.Sprite):
         damage = font.render(f'Урон: {self.damage}', 1, pygame.Color('black'))
         damage_coord = damage.get_rect()
         damage_coord.center = pygame.Rect((8, 536, 232, 44)).center
-        if len(self.synergy) > 10: # установка размера в зависимости от длины текста
+        if len(self.synergy) > 10:  # установка размера в зависимости от длины текста
             synergy = font1.render(f'Синергия: {self.synergy}', 1, pygame.Color('black'))
         else:
             synergy = font.render(f'Синергия: {self.synergy}', 1, pygame.Color('black'))
@@ -79,7 +81,7 @@ class PlayCard(pygame.sprite.Sprite):
         technic_info1, passive_ability_info1 = '', ''
         technic_info, passive_ability_info = [], []
 
-        for i in range(len(old_technic_info)): # разделение описания техники по строкам
+        for i in range(len(old_technic_info)):  # разделение описания техники по строкам
             technic_info1 += old_technic_info[i]
             if len(technic_info1) % 57 == 0:
                 technic_info.append(technic_info1.strip())
@@ -87,7 +89,7 @@ class PlayCard(pygame.sprite.Sprite):
             elif i == len(old_technic_info) - 1:
                 technic_info.append(technic_info1.strip())
 
-        for i in range(len(old_passive_ability_info)): # разделение описания пассивной способности по строкам
+        for i in range(len(old_passive_ability_info)):  # разделение описания пассивной способности по строкам
             passive_ability_info1 += old_passive_ability_info[i]
             if len(passive_ability_info1) % 57 == 0:
                 passive_ability_info.append(passive_ability_info1.strip())
@@ -106,31 +108,31 @@ class PlayCard(pygame.sprite.Sprite):
         screen.blit(synergy, synergy_coord)
         screen.blit(technic, (16, 586))
         screen.blit(passive_ability, (16, 700))
-        for i in range(len(technic_info)): # построчный вывод описания техники
+        for i in range(len(technic_info)):  # построчный вывод описания техники
             line = font2.render(technic_info[i], 1, pygame.Color('black'))
             y = 615 + 20 * i
             screen.blit(line, (16, y))
-        for i in range(len(passive_ability_info)): # посторочный вывод описания пассивной способности
+        for i in range(len(passive_ability_info)):  # посторочный вывод описания пассивной способности
             line = font2.render(passive_ability_info[i], 1, pygame.Color('black'))
             y = 729 + 20 * i
             screen.blit(line, (16, y))
 
     def __str__(self):
         """Представление объекта карты в виде строки"""
-        return self.short_name
+        return self.name
 
 
 class BonusCard(pygame.sprite.Sprite):
-    """Класс бонусной карты"""
+    """Класс бонусной карты, наследуемый от sprite.Sprite"""
 
-    def __init__(self, image, id, fraction, name, short_name):
+    def __init__(self, image, args, *group):
         """Инициализация основных характеристик карты"""
-        super().__init__()
-        self.image = load_image(CARDS, image)
-        self.id = id
-        self.fraction = fraction
-        self.name = name
-        self.short_name = short_name
+        super().__init__(group)
+        self.image = pygame.transform.scale(load_image(CARDS, image), (150, 225))
+        self.id = args[0]
+        self.fraction = args[1]
+        self.name = args[2]
+        self.short_name = args[3]
         self.rect = self.image.get_rect()
 
     def update(self):
@@ -169,7 +171,7 @@ class BonusCard(pygame.sprite.Sprite):
             screen.blit(line, (16, y))
 
     def __str__(self):
-        return self.short_name
+        return self.name
 
 
 """Классы игровых карт Конохагакуре"""
@@ -181,6 +183,7 @@ class Shu(PlayCard):
 class Pashke(PlayCard):
     def update(self, *args):
         pass
+
 
 class Akemi(PlayCard):
     def update(self, *args):
