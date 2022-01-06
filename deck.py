@@ -1,4 +1,4 @@
-import pygame, thorpy
+import pygame
 from constants import *
 
 
@@ -6,15 +6,17 @@ class Deck(pygame.sprite.Group):
     """Класс игровой колоды, наследуемый от sprite.Group"""
 
     def __init__(self, fraction):
-        """Инициализация колоды"""
+        """Инициализация игровой колоды"""
         super().__init__()
         self.main_fraction = None  # выбранная в меню фракция
         self.fraction = fraction  # фракция колоды
         self.score = 0  # количество ОЗ
         self.step = 0  # ход
         self.current = 0  # индекс текущей карты
+        self.cards_in_hand = self.sprites()
         self.konoha_bonus_rect = konoha_bonus.get_rect()  # колода карт-бонусов Конохагакуре (размеры)
         self.iva_bonus_rect = iva_bonus.get_rect()  # колода карт-бонусов Ивагакуре (размеры)
+        self.is_active = True  # переменная для определения хода
 
     def output(self):
         """Отрисовка игровой колоды"""
@@ -33,7 +35,7 @@ class Deck(pygame.sprite.Group):
                 self.sprites()[i].image = self.sprites()[i].deck_image
                 self.sprites()[i].rect = self.sprites()[i].image.get_rect()
                 self.sprites()[i].rect.center = pygame.Rect(126, height - 140, 229, 135).center
-            screen.blit(self.sprites()[self.current].image, self.sprites()[self.current].rect)
+            screen.blit(self.cards_in_hand[self.current].image, self.cards_in_hand[self.current].rect)
         else:
             pygame.draw.rect(screen, pygame.Color('white'), (126, 5, 229, 135), 3)
             pygame.draw.rect(screen, pygame.Color('white'), (35, 5, 90, 135), 3)
@@ -48,7 +50,7 @@ class Deck(pygame.sprite.Group):
                 self.sprites()[i].image = self.sprites()[i].deck_image
                 self.sprites()[i].rect = self.sprites()[i].image.get_rect()
                 self.sprites()[i].rect.center = pygame.Rect(126, 5, 229, 135).center
-            screen.blit(self.sprites()[self.current].image, self.sprites()[self.current].rect)
+            screen.blit(self.cards_in_hand[self.current].image, self.cards_in_hand[self.current].rect)
 
         """Вывод информации о количестве ходов, ОЗ и карт"""
         for i in range(len('Ход: ОЗ: Карты:'.split())):
@@ -63,3 +65,10 @@ class Deck(pygame.sprite.Group):
                 screen.blit(line, (42, 15 + 22 * i))
             else:
                 screen.blit(line, (width - 118, height - 75 + 22 * i))
+
+    def set_hand(self):
+        self.cards_in_hand = self.sprites()
+
+    def update_hand(self, cards):
+        for card in cards:
+            self.cards_in_hand.insert(self.current, card)

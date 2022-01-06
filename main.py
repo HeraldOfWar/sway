@@ -1,9 +1,9 @@
 import pygame
+import cards
 from activities import BasicActivity, GameActivity
 from deck import Deck
 from battlepoints import BattlePoint
 from constants import *
-import cards
 
 
 def sprites_init():
@@ -78,9 +78,12 @@ if __name__ == '__main__':
     iva_deck = Deck(IVAGAKURE)  # группа игровых карт-спрайтов Ивагакуре
 
     """Создание боевых точек"""
-    pass1, pass2, pass3 = BattlePoint(6, 1), BattlePoint(7, 1), BattlePoint(8, 1)  # союзные перевалы
-    pass4, pass5, pass6 = BattlePoint(0, 1), BattlePoint(1, 1), BattlePoint(2, 1)  # вражеские перевалы
-    bridge1, bridge2, horanpass = BattlePoint(3, 2), BattlePoint(5, 2), BattlePoint(4, 3)  # мосты
+    pass1, pass2, pass3 = BattlePoint(b_pass1, 6, 1), BattlePoint(b_pass2, 7, 1), \
+                          BattlePoint(b_pass3, 8, 1)  # союзные перевалы
+    pass4, pass5, pass6 = BattlePoint(b_pass4, 0, 1), BattlePoint(b_pass5, 1, 1), \
+                          BattlePoint(b_pass6, 2, 1)  # вражеские перевалы
+    bridge1, bridge2 = BattlePoint(b_bridge1, 3, 2), BattlePoint(b_bridge2, 5, 2)  # мосты
+    horanpass = BattlePoint(b_horanpass, 4, 3)  # перевал Хорана
     battlefields = [pass1, pass2, pass3, pass4, pass5, pass6, bridge1, bridge2, horanpass]  # список точек
 
     """Создание всех карт"""
@@ -121,15 +124,13 @@ if __name__ == '__main__':
                                   old_activity=cf_activity)
     card_info_activity = BasicActivity(basic_back, buttons=[escape_button, exit_button],
                                        old_activity=cf_activity)
-    rules_activity = BasicActivity(rules_back, buttons=[ok_button])
     game_activity = GameActivity(k_battlefield, buttons=game_buttons, decks=[konoha_deck, iva_deck],
                                  battlepoints=battlefields)
     """Настройка навигации"""
     start_activity.next_activity = cf_activity
     cf_activity.next_activity = info_activity
-    cf_activity.start_game_activity = rules_activity
+    cf_activity.start_game_activity = game_activity
     info_activity.next_activity = card_info_activity
     card_info_activity.previous_activity = info_activity
-    rules_activity.next_activity = game_activity
 
     main()  # запуск игры

@@ -50,7 +50,7 @@ class PlayCard(pygame.sprite.Sprite):
         """Создание текста и установка координат"""
         img_coord = self.info_image.get_rect()
         img_coord.center = pygame.Rect((8, 160, 465, 245)).center
-        title = b_font2.render(f'{self.name}, ({self.spec})', 1, pygame.Color('black'))
+        title = b_font3.render(f'{self.name}, ({self.spec})', 1, pygame.Color('black'))
         title_coord = title.get_rect()
         title_coord.center = pygame.Rect((8, 405, 464, 45)).center
         pace = font.render(f'Скорость: {self.pace}', 1, pygame.Color('black'))
@@ -74,8 +74,8 @@ class PlayCard(pygame.sprite.Sprite):
             synergy = font.render(f'Синергия: {self.synergy}', 1, pygame.Color('black'))
         synergy_coord = synergy.get_rect()
         synergy_coord.center = pygame.Rect((238, 536, 233, 44)).center
-        technic = b_font2.render('Техника:', 1, pygame.Color('black'))
-        passive_ability = b_font2.render('Пассивная способность:', 1, pygame.Color('black'))
+        technic = b_font3.render('Техника:', 1, pygame.Color('black'))
+        passive_ability = b_font3.render('Пассивная способность:', 1, pygame.Color('black'))
         old_technic_info, old_passive_ability_info = P_SECOND_INFO[self.id - 1][0][0], \
                                                      P_SECOND_INFO[self.id - 1][0][1]
         technic_info1, passive_ability_info1 = '', ''
@@ -128,7 +128,7 @@ class BonusCard(pygame.sprite.Sprite):
     def __init__(self, image, args, *group):
         """Инициализация основных характеристик карты"""
         super().__init__(group)
-        self.image = pygame.transform.scale(load_image(CARDS, image), (150, 225))
+        self.image = load_image(CARDS, image)
         self.id = args[0]
         self.fraction = args[1]
         self.name = args[2]
@@ -147,10 +147,10 @@ class BonusCard(pygame.sprite.Sprite):
 
         img_coord = self.rect.copy()
         img_coord.center = pygame.Rect((8, 160, 465, 245)).center
-        title = b_font1.render(f'{self.name}', 1, pygame.Color('black'))
+        title = b_font2.render(f'{self.name}', 1, pygame.Color('black'))
         title_coord = title.get_rect()
         title_coord.center = pygame.Rect((8, 404, 465, 50)).center
-        ability = b_font1.render('Эффект:', 1, pygame.Color('black'))
+        ability = b_font2.render('Эффект:', 1, pygame.Color('black'))
         old_ability_info = B_SECOND_INFO[self.id - 1][0][0]
         ability_info1, ability_info = '', []
 
