@@ -27,6 +27,7 @@ class PlayCard(pygame.sprite.Sprite):
         self.info_image = self.image  # изображение для выдачи информации о карте
         self.deck_image = load_image(CARDS, f'deck_{self.short_name}.jpg')  # изображение "в руке"
         self.battle_image = load_image(CARDS, f'battle_{self.short_name}.jpg')  # изображение на боевой точке
+        self.is_enabled = True
 
     def update(self, *args):
         """Реализация пассивной способности"""
@@ -36,44 +37,44 @@ class PlayCard(pygame.sprite.Sprite):
         """Выдача информации о карте"""
 
         """Предварительная отрисовка всех границ и прямоугольников"""
-        pygame.draw.rect(screen, pygame.Color('black'), (8, 160, 464, 246), 3)
-        pygame.draw.rect(screen, pygame.Color('black'), (8, 405, 464, 45), 3)
-        pygame.draw.rect(screen, pygame.Color('black'), (8, 449, 232, 44), 3)
-        pygame.draw.rect(screen, pygame.Color('black'), (238, 449, 233, 44), 3)
-        pygame.draw.rect(screen, pygame.Color('black'), (8, 492, 232, 45), 3)
-        pygame.draw.rect(screen, pygame.Color('black'), (238, 492, 233, 45), 3)
-        pygame.draw.rect(screen, pygame.Color('black'), (8, 536, 232, 44), 3)
-        pygame.draw.rect(screen, pygame.Color('black'), (238, 536, 233, 44), 3)
+        pygame.draw.rect(screen, pygame.Color('black'), (8, 160, 464, 248), 3)
+        pygame.draw.rect(screen, pygame.Color('black'), (8, 405, 464, 47), 3)
+        pygame.draw.rect(screen, pygame.Color('black'), (8, 449, 232, 46), 3)
+        pygame.draw.rect(screen, pygame.Color('black'), (238, 449, 233, 46), 3)
+        pygame.draw.rect(screen, pygame.Color('black'), (8, 492, 232, 47), 3)
+        pygame.draw.rect(screen, pygame.Color('black'), (238, 492, 233, 47), 3)
+        pygame.draw.rect(screen, pygame.Color('black'), (8, 536, 232, 46), 3)
+        pygame.draw.rect(screen, pygame.Color('black'), (238, 536, 233, 46), 3)
         pygame.draw.rect(screen, pygame.Color('black'), (8, 405, 464, 444), 3)
         pygame.draw.rect(screen, pygame.Color('black'), (8, 405, 464, 290), 3)
 
         """Создание текста и установка координат"""
         img_coord = self.info_image.get_rect()
-        img_coord.center = pygame.Rect((8, 160, 465, 245)).center
+        img_coord.center = pygame.Rect((8, 160, 465, 248)).center
         title = b_font3.render(f'{self.name}, ({self.spec})', 1, pygame.Color('black'))
         title_coord = title.get_rect()
-        title_coord.center = pygame.Rect((8, 405, 464, 45)).center
+        title_coord.center = pygame.Rect((8, 405, 464, 47)).center
         pace = font.render(f'Скорость: {self.pace}', 1, pygame.Color('black'))
         pace_coord = pace.get_rect()
-        pace_coord.center = pygame.Rect((8, 449, 232, 44)).center
+        pace_coord.center = pygame.Rect((8, 449, 232, 46)).center
         chakra = font.render(f'Чакра: {self.chakra}', 1, pygame.Color('black'))
         chakra_coord = chakra.get_rect()
-        chakra_coord.center = pygame.Rect((238, 449, 233, 44)).center
+        chakra_coord.center = pygame.Rect((238, 449, 233, 46)).center
         resist = font.render(f'Стойкость: {self.resist}', 1, pygame.Color('black'))
         resist_coord = resist.get_rect()
-        resist_coord.center = pygame.Rect((8, 492, 232, 45)).center
+        resist_coord.center = pygame.Rect((8, 492, 232, 47)).center
         health = font.render(f'Здоровье: {self.health}', 1, pygame.Color('black'))
         health_coord = health.get_rect()
-        health_coord.center = pygame.Rect(238, 492, 233, 45).center
+        health_coord.center = pygame.Rect(238, 492, 233, 47).center
         damage = font.render(f'Урон: {self.damage}', 1, pygame.Color('black'))
         damage_coord = damage.get_rect()
-        damage_coord.center = pygame.Rect((8, 536, 232, 44)).center
+        damage_coord.center = pygame.Rect((8, 536, 232, 46)).center
         if len(self.synergy) > 10:  # установка размера в зависимости от длины текста
             synergy = font1.render(f'Синергия: {self.synergy}', 1, pygame.Color('black'))
         else:
             synergy = font.render(f'Синергия: {self.synergy}', 1, pygame.Color('black'))
         synergy_coord = synergy.get_rect()
-        synergy_coord.center = pygame.Rect((238, 536, 233, 44)).center
+        synergy_coord.center = pygame.Rect((238, 536, 233, 46)).center
         technic = b_font3.render('Техника:', 1, pygame.Color('black'))
         passive_ability = b_font3.render('Пассивная способность:', 1, pygame.Color('black'))
         old_technic_info, old_passive_ability_info = P_SECOND_INFO[self.id - 1][0][0], \
@@ -134,6 +135,7 @@ class BonusCard(pygame.sprite.Sprite):
         self.name = args[2]
         self.short_name = args[3]
         self.rect = self.image.get_rect()
+        self.is_enabled = True
 
     def update(self):
         """Реализация эффекта карты"""
@@ -141,15 +143,15 @@ class BonusCard(pygame.sprite.Sprite):
 
     def get_info(self):
         """Выдача информации о карте"""
-        pygame.draw.rect(screen, pygame.Color('black'), (8, 160, 464, 245), 3)
-        pygame.draw.rect(screen, pygame.Color('black'), (8, 404, 464, 50), 3)
+        pygame.draw.rect(screen, pygame.Color('black'), (8, 160, 464, 247), 3)
+        pygame.draw.rect(screen, pygame.Color('black'), (8, 404, 464, 52), 3)
         pygame.draw.rect(screen, pygame.Color('black'), (8, 453, 464, 393), 3)
 
         img_coord = self.rect.copy()
-        img_coord.center = pygame.Rect((8, 160, 465, 245)).center
+        img_coord.center = pygame.Rect((8, 160, 465, 247)).center
         title = b_font2.render(f'{self.name}', 1, pygame.Color('black'))
         title_coord = title.get_rect()
-        title_coord.center = pygame.Rect((8, 404, 465, 50)).center
+        title_coord.center = pygame.Rect((8, 404, 465, 52)).center
         ability = b_font2.render('Эффект:', 1, pygame.Color('black'))
         old_ability_info = B_SECOND_INFO[self.id - 1][0][0]
         ability_info1, ability_info = '', []

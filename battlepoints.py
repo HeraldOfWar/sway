@@ -10,6 +10,7 @@ class BattlePoint(pygame.sprite.Group):
         """Инициализация боевой точки"""
         super().__init__()
         self.view = view
+        self.info_fragment = Fragment('battlepoint', battlepoint_back, b_battlepoint, self)
         self.number = number  # номер точки
         self.points = points  # количество ОЗ, которое генерируется точкой
 
@@ -60,10 +61,3 @@ class BattlePoint(pygame.sprite.Group):
             name_coord = name.get_rect()
             name_coord.center = b_battlefields[self.number].center
             screen.blit(name, name_coord)
-
-    def get_info(self):
-        """Выдача информации о боевой точке"""
-
-        """Создание и запуск фрагмента"""
-        battlepoint_info = Fragment('battlepoint', battlepoint_back, buttons=b_battlepoint, sprites=[self])
-        battlepoint_info.run()

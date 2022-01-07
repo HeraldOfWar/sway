@@ -13,6 +13,5 @@ def load_image(directory, name, colorkey=None):
 
 
 def terminate():
-    """Выход из игры"""
     pygame.quit()
     sys.exit()

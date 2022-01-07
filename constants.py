@@ -1,7 +1,8 @@
 import os, sqlite3
 import pygame
 from system_func import load_image
-from gui_elements import Button
+from gui_elements import Button, ImageButton
+
 
 """Основные константы"""
 FRACTION = None  # выбранная фракция (Конохагакуре или Ивагакуре)
@@ -18,6 +19,7 @@ TITLE_FONT = os.path.join(FONTS, 'rusmadeinchinav2.ttf')  # заголовок
 MAIN_FONT = os.path.join(FONTS, 'HanZi.ttf')  # основной текст
 CARDS = os.path.join('resources', 'cards')  # изображения карт
 BACK_N_BUT = os.path.join('resources', 'back_and_buttons')  # фоны и кнопки
+THEMES = os.path.join('resources', 'themes')
 
 """Фоны и кнопки"""
 start_back = load_image(BACK_N_BUT, 'start_background.jpg')  # стартовый фон
@@ -38,12 +40,12 @@ konoha_bonusdeck = pygame.sprite.Group()  # группа бонусных кар
 iva_bonusdeck = pygame.sprite.Group()  # группа бонусных карт-спрайтов Ивагакуре
 
 """Кнопки-спрайты"""
-konohagakure, ivagakure = pygame.sprite.Sprite(cf_sprites), pygame.sprite.Sprite(cf_sprites)
-info_1, info_2 = pygame.sprite.Sprite(cf_sprites), pygame.sprite.Sprite(cf_sprites)
-playcards, bonuscards = pygame.sprite.Sprite(info_sprites), pygame.sprite.Sprite(info_sprites)
+konohagakure, ivagakure = ImageButton(cf_sprites), ImageButton(cf_sprites)
+info_1, info_2 = ImageButton(cf_sprites), ImageButton(cf_sprites)
+playcards, bonuscards = ImageButton(info_sprites), ImageButton(info_sprites)
 
 """Кнопки навигации"""
-play_button = Button((145, 580, 180, 180))  # кнопка "Играть" (->)
+play_button = Button((145, 630, 180, 100))  # кнопка "Играть" (->)
 exit_button = Button(width - 70, 15, 50, 50)  # кнопка "Выйти" ([х])
 escape_button = Button(20, 15, 80, 50)  # кнопка "Назад" (<-)
 ok_button = Button(165, height - 100, 150, 75)  # кнопка "ОК"
@@ -71,7 +73,7 @@ game_buttons = [endstep_button1, endstep_button2, bonus_button1, bonus_button2, 
 b_battlefields = game_buttons[8:]
 
 """Позиции на боевых точках"""
-point1, point2, point3 = Button(58, 560, 120, 175), Button(180, 560, 120, 175), Button(302, 560, 120, 175)
+point1, point2, point3 = Button(58, 562, 120, 175), Button(180, 562, 120, 175), Button(302, 562, 120, 175)
 point4, point5, point6 = Button(58, 150, 120, 175), Button(180, 150, 120, 175), Button(302, 150, 120, 175)
 b_battlepoint = [exit_button, point1, point2, point3, point4, point5, point6]  # список позиций на боевой точке
 
@@ -91,3 +93,7 @@ b_font2, b_font3 = pygame.font.Font(TITLE_FONT, 30), pygame.font.Font(TITLE_FONT
 b_font4 = pygame.font.Font(TITLE_FONT, 24)
 font, font1 = pygame.font.Font(MAIN_FONT, 14), pygame.font.Font(MAIN_FONT, 12)
 font2, font3 = pygame.font.Font(MAIN_FONT, 10), pygame.font.Font(MAIN_FONT, 8)
+
+"""Инициализация тем"""
+default_theme = os.path.join(THEMES, 'default_theme.json')
+window_theme = os.path.join(THEMES, 'window_theme.json')

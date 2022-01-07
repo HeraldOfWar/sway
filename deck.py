@@ -21,7 +21,7 @@ class Deck(pygame.sprite.Group):
     def output(self):
         """Отрисовка игровой колоды"""
         if self.fraction == self.main_fraction:
-            pygame.draw.rect(screen, pygame.Color('white'), (126, height - 140, 229, 135), 3)
+            pygame.draw.rect(screen, pygame.Color('white'), (125, height - 140, 231, 135), 3)
             pygame.draw.rect(screen, pygame.Color('white'), (width - 125, height - 140, 90, 135), 3)
             pygame.draw.rect(screen, pygame.Color('white'), endstep_button1, 3)
             """Установка колоды бонусных карт"""
@@ -37,7 +37,7 @@ class Deck(pygame.sprite.Group):
                 self.sprites()[i].rect.center = pygame.Rect(126, height - 140, 229, 135).center
             screen.blit(self.cards_in_hand[self.current].image, self.cards_in_hand[self.current].rect)
         else:
-            pygame.draw.rect(screen, pygame.Color('white'), (126, 5, 229, 135), 3)
+            pygame.draw.rect(screen, pygame.Color('white'), (124, 5, 231, 135), 3)
             pygame.draw.rect(screen, pygame.Color('white'), (35, 5, 90, 135), 3)
             pygame.draw.rect(screen, pygame.Color('white'), endstep_button2, 3)
             if self.fraction == KONOHAGAKURE:

@@ -1,5 +1,5 @@
-import pygame
-from system_func import terminate, load_image
+import pygame, pygame_gui
+from system_func import load_image, terminate
 from constants import *
 
 
@@ -15,106 +15,114 @@ class BasicActivity():
         self.previous_activity = None  # ещё одна предыдущая активность... (escape_button)
         self.next_activity = None  # следующая активность
         self.start_game_activity = None  # активность для запуска игры
+        self.manager = pygame_gui.UIManager(size, default_theme)
+        self.ui_buttons = []
+        for button in self.buttons:
+            self.load_ui(button)
 
     def run(self, card=None):
         """Запуск основного цикла"""
         while True:  # а вот и цикл!
             for event in pygame.event.get():  # pygame ждёт, чтобы пользователь что-то сделал
                 if event.type == pygame.QUIT:  # ты куда???... (выход при нажатии на системный крестик)
-                    terminate()
+                    termination_dialog = pygame_gui.windows.UIConfirmationDialog(
+                        rect=pygame.Rect(width // 2 - 150, height // 2 - 100, 300, 200),
+                        manager=self.manager,
+                        window_title='Подтверждение выхода',
+                        action_long_desc='Вы уверены, что хотите выйти?',
+                        action_short_name='OK', blocking=True)
+                    for sprite in self.sprites:
+                        sprite.is_enabled = False
+                    for button in self.buttons:
+                        button.is_enabled = False
+                elif event.type == pygame.USEREVENT:
+                    if event.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
+                        terminate()
+                    elif event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                        for element in self.ui_buttons:
+                            if element == event.ui_element:
+                                return self.mouse_click(event.ui_element)
+                        if event.ui_element == termination_dialog.cancel_button or \
+                                event.ui_element == termination_dialog.close_window_button:
+                            for sprite in self.sprites:
+                                sprite.is_enabled = True
+                            for button in self.buttons:
+                                button.is_enabled = True
                 elif event.type == pygame.KEYDOWN:  # нажатие клавиши на клавиатуре
-                    return self.key_click(event)
+                    if event.key == pygame.K_ESCAPE:
+                        if self.old_activity:
+                            pygame.time.wait(150)
+                            for button in self.buttons:
+                                button.is_hovered = False
+                            return self.old_activity.run()
+                        else:
+                            termination_dialog = pygame_gui.windows.UIConfirmationDialog(
+                                rect=pygame.Rect(width // 2 - 150, height // 2 - 100, 300, 200),
+                                manager=self.manager,
+                                window_title='Подтверждение выхода',
+                                action_long_desc='Вы уверены, что хотите выйти?',
+                                action_short_name='OK',
+                                blocking=True)
                 elif event.type == pygame.MOUSEMOTION:  # движение мыши
                     self.mouse_motion(event)
-                elif event.type == pygame.MOUSEBUTTONDOWN:  # клик мыши
-                    if event.button == pygame.BUTTON_LEFT:  # только левая кнопка!
-                        for button in self.buttons:
-                            if button.collidepoint(event.pos):  # проверка пересечения мыши и кнопки
-                                return self.mouse_click(button)
-                        if len(self.sprites) > 1:
-                            for sprite in self.sprites:
-                                if sprite.rect.collidepoint(event.pos):  # проверка пересечения мыши и спрайта
-                                    return self.mouse_click(sprite)
+                elif event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == pygame.BUTTON_LEFT:
+                        for sprite in self.sprites:
+                            if sprite.rect.collidepoint(event.pos) and sprite.is_enabled:
+                                return self.mouse_click(sprite)
+                self.manager.process_events(event)
+            self.manager.update(FPS)
             self.output()  # отрисовка окна
             if card:
                 card.get_info()  # при нажатии на карту выдаётся информация о ней
+            self.manager.draw_ui(screen)
             pygame.display.flip()  # смена кадров
 
     def output(self):
         """Отрисовка всех элементов"""
         screen.blit(self.background, (0, 0))  # отрисовка фона
-        for button in self.buttons:
-            self.draw_button(button)  # отрисовка кнопок
         if self.sprites:
-            self.sprites.draw(screen)  # отрисовка прайтов
+            self.sprites.draw(screen)
 
-    def draw_button(self, button):
-        """Отрисовка всех кнопок"""
-        if button == play_button:
-            if button.is_hovered:  # если пользователь наводит мышь на кнопку, она становится белой
-                color = 'white'
-            else:  # иначе она снова становится чёрной
-                color = 'black'
-            pygame.draw.rect(screen, pygame.Color(color), play_button, 10, 15)
-            pygame.draw.polygon(screen, pygame.Color(color), ((190, 620), (190, 720), (295, 670)))
-        if button == exit_button:
-            if button.is_hovered:
-                color = 'white'
-            else:
-                color = 'black'
-            pygame.draw.rect(screen, pygame.Color(color), exit_button, 3)
-            pygame.draw.line(screen, pygame.Color(color), (width - 60, 25), (width - 30, 55), 5)
-            pygame.draw.line(screen, pygame.Color(color), (width - 30, 25), (width - 60, 55), 5)
-        if button == escape_button:
-            if button.is_hovered:
-                color = 'white'
-            else:
-                color = 'black'
-            pygame.draw.rect(screen, pygame.Color(color), escape_button, 3)
-            pygame.draw.rect(screen, pygame.Color(color), (45, 32, 45, 16))
-            pygame.draw.polygon(screen, pygame.Color(color), ((30, 40), (55, 25), (55, 55)))
-        if button == ok_button:
-            if button.is_hovered:
-                color = 'white'
-            else:
-                color = 'black'
-            pygame.draw.rect(screen, pygame.Color(color), ok_button, 10)
-            ok_text = b_font.render('OK', 1, pygame.Color(color))
-            ok_text_coord = ok_text.get_rect()
-            ok_text_coord.center = ok_button.center
-            screen.blit(ok_text, ok_text_coord)
+    def load_ui(self, ui_element):
+        """Отрисовка всех 'элементов пользовательского интерфейса'"""
+        if ui_element == play_button:
+            ui_button = pygame_gui.elements.UIButton(
+                relative_rect=play_button,
+                manager=self.manager,
+                text='Play')
+            self.ui_buttons.append(ui_button)
+        elif ui_element == exit_button:
+            ui_button = pygame_gui.elements.UIButton(
+                relative_rect=exit_button,
+                manager=self.manager,
+                text='X')
+            self.ui_buttons.append(ui_button)
+        elif ui_element == escape_button:
+            ui_button = pygame_gui.elements.UIButton(
+                relative_rect=escape_button,
+                manager=self.manager,
+                text='<-')
+            self.ui_buttons.append(ui_button)
 
     def mouse_motion(self, event):
         """Проверка наведения пользователем мыши на кнопку"""
         pygame.time.wait(50)  # искуственная задержка (50 мс)
         for button in self.buttons:
-            if button.collidepoint(event.pos):
+            if button.collidepoint(event.pos) and button.is_enabled:
                 button.is_hovered = True
             else:
                 button.is_hovered = False
 
-    def key_click(self, event):
-        """Обработка нажатия клавиши клавиатуры"""
-        if event.key == pygame.K_ESCAPE:
-            if self.old_activity:
-                pygame.time.wait(150)
-                for button in self.buttons:
-                    button.is_hovered = False
-                self.old_activity.run()
-            else:
-                terminate()
-
     def mouse_click(self, view):
         """Обработка нажатия клавиши мыши"""
         global FRACTION
-        pygame.time.wait(150)
-        for button in self.buttons:
-            button.is_hovered = False
-        if view == play_button or view == ok_button:
-            self.next_activity.run()  # отрисовка следующей активности
-        if view == exit_button:
-            self.old_activity.run()  # отрисовка предыдушей активности
-        if view == escape_button:
+        pygame.time.wait(100)
+        if view.rect == play_button:
+            self.next_activity.run()
+        if view.rect == exit_button:
+            self.old_activity.run()
+        if view.rect == escape_button:
             self.previous_activity.run()
         if view == konohagakure:
             FRACTION = KONOHAGAKURE  # выбрана фракция Конохагакуре
@@ -166,7 +174,7 @@ class Fragment(BasicActivity):
     def __init__(self, f_type, background, buttons=[], sprites=[]):
         """Инициализация фрагмента"""
         super().__init__(background, buttons, sprites)
-        self.f_type = f_type  # типа фрагмента
+        self.f_type = f_type  # тип фрагмента
         self.screen2 = pygame.Surface(screen.get_size())  # второй холст, копия основного
 
     def output(self):
@@ -178,8 +186,8 @@ class Fragment(BasicActivity):
             title_rules_rect.centerx = pygame.Rect(0, 0, width, height).centerx
             self.screen2.blit(title_rules, (title_rules_rect.x, 45))
         if self.f_type == 'battlepoint':  # если это боевая точка, то отрисовываем всю информацию о точке
-            battlepoint = self.sprites[0]
-            pygame.draw.rect(self.screen2, pygame.Color('white'), (0, 326, width, 234), 3)
+            battlepoint = self.sprites
+            pygame.draw.rect(self.screen2, pygame.Color('white'), (0, 327, width, 233), 3)
             if battlepoint.number < 3 or battlepoint.number > 5:
                 if battlepoint.number < 3:
                     name = b_font1.render(f'Перевал {battlepoint.number + 4}', 1, pygame.Color('black'))
@@ -199,62 +207,58 @@ class Fragment(BasicActivity):
                 name_coord = name.get_rect()
                 name_coord.centerx, name_coord.centery = width // 2, 65
                 self.screen2.blit(name, name_coord)
-        for button in self.buttons:
-            self.draw_button(button)
+            for point in self.buttons:
+                self.draw_points(point)
         screen.blit(self.screen2, (0, 0))  # отрисовка второго холста
 
-    def draw_button(self, button):
+    def load_ui(self, ui_element):
         """Отрисовка всех кнопок"""
-        if button == exit_button:
-            if button.is_hovered:
-                color = 'white'
-            else:
-                color = 'black'
-            pygame.draw.rect(self.screen2, pygame.Color(color), exit_button, 5)
-            pygame.draw.line(self.screen2, pygame.Color(color), (width - 60, 25), (width - 30, 55), 5)
-            pygame.draw.line(self.screen2, pygame.Color(color), (width - 30, 25), (width - 60, 55), 5)
-        if button == ok_button:
-            if button.is_hovered:
-                color = 'white'
-            else:
-                color = 'black'
-            pygame.draw.rect(self.screen2, pygame.Color(color), ok_button, 10)
-            ok_text = b_font.render('OK', 1, pygame.Color(color))
-            ok_text_coord = ok_text.get_rect()
-            ok_text_coord.center = ok_button.center
-            self.screen2.blit(ok_text, ok_text_coord)
-        if button == point1:
-            if button.is_hovered:
+        if ui_element == ok_button:
+            ui_button = pygame_gui.elements.UIButton(
+                relative_rect=ok_button,
+                manager=self.manager,
+                text='OK')
+            self.ui_buttons.append(ui_button)
+        elif ui_element == exit_button:
+            ui_button = pygame_gui.elements.UIButton(
+                relative_rect=exit_button,
+                manager=self.manager,
+                text='X')
+            self.ui_buttons.append(ui_button)
+
+    def draw_points(self, point):
+        if point == point1:
+            if point.is_hovered:
                 color = 'red'
             else:
                 color = 'white'
             pygame.draw.rect(self.screen2, pygame.Color(color), point1, 4)
-        if button == point2:
-            if button.is_hovered:
+        if point == point2:
+            if point.is_hovered:
                 color = 'red'
             else:
                 color = 'white'
             pygame.draw.rect(self.screen2, pygame.Color(color), point2, 4)
-        if button == point3:
-            if button.is_hovered:
+        if point == point3:
+            if point.is_hovered:
                 color = 'red'
             else:
                 color = 'white'
             pygame.draw.rect(self.screen2, pygame.Color(color), point3, 4)
-        if button == point4:
-            if button.is_hovered:
+        if point == point4:
+            if point.is_hovered:
                 color = 'red'
             else:
                 color = 'white'
             pygame.draw.rect(self.screen2, pygame.Color(color), point4, 4)
-        if button == point5:
-            if button.is_hovered:
+        if point == point5:
+            if point.is_hovered:
                 color = 'red'
             else:
                 color = 'white'
             pygame.draw.rect(self.screen2, pygame.Color(color), point5, 4)
-        if button == point6:
-            if button.is_hovered:
+        if point == point6:
+            if point.is_hovered:
                 color = 'red'
             else:
                 color = 'white'
@@ -270,9 +274,10 @@ class Fragment(BasicActivity):
 class GameActivity(BasicActivity):
     """Класс игрового окна (активности), наследуемый от стандартного окна"""
 
-    def __init__(self, background, buttons, decks, battlepoints):
+    def __init__(self, background, buttons, decks, battlepoints, fragments):
         """Инициализация основных параметров игровой активности"""
-        super().__init__(background, buttons=buttons)
+        super().__init__(background, buttons)
+        self.fragments = fragments
         self.decks = decks
         self.first_cards = self.decks[0]  # колода игровых карт выбранной фракции
         self.second_cards = self.decks[1]  # колода игровых карт вражеской фракции
@@ -295,21 +300,55 @@ class GameActivity(BasicActivity):
         while True:
             for event in pygame.event.get():  # pygame ждёт, чтобы пользователь что-то сделал
                 if event.type == pygame.QUIT:  # ты куда???... (выход при нажатии на системный крестик)
-                    terminate()
+                    termination_dialog = pygame_gui.windows.UIConfirmationDialog(
+                        rect=pygame.Rect(width // 2 - 150, height // 2 - 100, 300, 200),
+                        manager=self.manager,
+                        window_title='Подтверждение выхода',
+                        action_long_desc='Вы уверены, что хотите выйти?',
+                        action_short_name='OK', blocking=True)
+                    for sprite in self.sprites:
+                        sprite.is_enabled = False
+                    for button in self.buttons:
+                        button.is_enabled = False
+                elif event.type == pygame.USEREVENT:
+                    if event.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
+                        terminate()
+                    elif event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                        for element in self.ui_buttons:
+                            if element == event.ui_element:
+                                return self.mouse_click(event.ui_element)
+                        if event.ui_element == termination_dialog.cancel_button or \
+                                event.ui_element == termination_dialog.close_window_button:
+                            for sprite in self.sprites:
+                                sprite.is_enabled = True
+                            for button in self.buttons:
+                                button.is_enabled = True
                 elif event.type == pygame.KEYDOWN:  # нажатие клавиши на клавиатуре
-                    return self.key_click(event)
+                    if event.key == pygame.K_ESCAPE:
+                        if self.old_activity:
+                            pygame.time.wait(150)
+                            for button in self.buttons:
+                                button.is_hovered = False
+                            return self.old_activity.run()
+                        else:
+                            termination_dialog = pygame_gui.windows.UIConfirmationDialog(
+                                rect=pygame.Rect(width // 2 - 150, height // 2 - 100, 300, 200),
+                                manager=self.manager,
+                                window_title='Подтверждение выхода',
+                                action_long_desc='Вы уверены, что хотите выйти?',
+                                action_short_name='OK',
+                                blocking=True)
                 elif event.type == pygame.MOUSEMOTION:  # движение мыши
                     self.mouse_motion(event)
                 elif event.type == pygame.MOUSEBUTTONDOWN:  # клик мыши
                     if event.button == pygame.BUTTON_LEFT:  # только левая кнопка!
                         for button in self.buttons:
-                            if button.collidepoint(event.pos):  # проверка пересечения мыши и кнопки
+                            if button.collidepoint(event.pos) and button.is_enabled:  # проверка пересечения мыши и кнопки
                                 self.mouse_click(button)
-                        for sprites in self.sprites:
-                            for sprite in sprites:
-                                if sprite.rect.collidepoint(event.pos):  # проверка пересечения мыши и спрайта
-                                    self.mouse_click(sprite)
+                self.manager.process_events(event)
+            self.manager.update(FPS)
             self.output()
+            self.manager.draw_ui(screen)
             pygame.display.flip()
 
     def output(self):
@@ -358,7 +397,7 @@ class GameActivity(BasicActivity):
             else:
                 color = 'white'
             pygame.draw.rect(screen, pygame.Color(color), leftslide1, 3)
-            pygame.draw.polygon(screen, pygame.Color(color), ((175, height - 93), (175, height - 53),
+            pygame.draw.polygon(screen, pygame.Color(color), ((174, height - 93), (174, height - 53),
                                                               (140, height - 73)))
         if button == rightslide1:
             if self.first_cards.is_active and button.is_hovered:
@@ -381,7 +420,7 @@ class GameActivity(BasicActivity):
             else:
                 color = 'white'
             pygame.draw.rect(screen, pygame.Color(color), leftslide2, 3)
-            pygame.draw.polygon(screen, pygame.Color(color), ((175, 53), (175, 93), (140, 73)))
+            pygame.draw.polygon(screen, pygame.Color(color), ((174, 53), (174, 93), (140, 73)))
         if button == rightslide2:
             if self.second_cards.is_active and button.is_hovered:
                 color = 'black'
@@ -477,10 +516,9 @@ class GameActivity(BasicActivity):
             return
         for battlepoint in self.battlepoints:
             if view == battlepoint.view:
-                return battlepoint.get_info()
+                return battlepoint.info_fragment.run()
 
     def get_rules(self):
         """Создание и запуск фрагмента правил"""
-        self.rules = Fragment('rules', rules_back, buttons=[ok_button])
-        self.rules.run()
+        self.fragments[0].run()
 

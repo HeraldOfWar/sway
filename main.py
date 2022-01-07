@@ -1,6 +1,6 @@
 import pygame
 import cards
-from activities import BasicActivity, GameActivity
+from activities import BasicActivity, GameActivity, Fragment
 from deck import Deck
 from battlepoints import BattlePoint
 from constants import *
@@ -117,15 +117,16 @@ if __name__ == '__main__':
     true_medic = cards.TrueMedic(f'{BONUSCARDS_DATA[8][3]}.jpg', BONUSCARDS_DATA[8], iva_bonusdeck)
     ambitions = cards.Ambitions(f'{BONUSCARDS_DATA[9][3]}.jpg', BONUSCARDS_DATA[9], iva_bonusdeck)
 
-    """Создание всех окон (активностей)"""
+    """Создание всех окон (активностей и фрагментов)"""
     start_activity = BasicActivity(start_back, buttons=[play_button])
     cf_activity = BasicActivity(cf_back, sprites=cf_sprites, old_activity=start_activity)
     info_activity = BasicActivity(basic_back, buttons=[exit_button], sprites=info_sprites,
                                   old_activity=cf_activity)
     card_info_activity = BasicActivity(basic_back, buttons=[escape_button, exit_button],
                                        old_activity=cf_activity)
+    rules = Fragment('rules', rules_back, buttons=[ok_button])
     game_activity = GameActivity(k_battlefield, buttons=game_buttons, decks=[konoha_deck, iva_deck],
-                                 battlepoints=battlefields)
+                                 battlepoints=battlefields, fragments=[rules])  # главная игровая активность
     """Настройка навигации"""
     start_activity.next_activity = cf_activity
     cf_activity.next_activity = info_activity
