@@ -54,40 +54,22 @@
       }
     }
   },
-  "window.#close_button": {
+    "window.#close_button": {
     "font": {
-      "name": "font1",
-      "size": "10",
+      "name": "HanZi2",
+      "size": "14",
       "regular_resource": {
         "package": "resources.fonts",
-        "resource": "rusmadeinchinav2.ttf"
+        "resource": "HanZi.ttf"
       }
     },
     "misc": {
       "text_vert_alignment": "center",
-      "text_horiz_alignment": "left",
+      "text_horiz_alignment": "center",
       "tool_tip_delay": "1.0"
     }
   },
   "#confirmation_dialog.#confirm_button": {
-    "colours": {
-      "normal_bg": "#45494e",
-      "hovered_bg": "#35393e",
-      "disabled_bg": "#25292e",
-      "selected_bg": "#193754",
-      "active_bg": "#193754",
-      "dark_bg": "#15191e",
-      "normal_text": "#c5cbd8",
-      "hovered_text": "#FFFFFF",
-      "selected_text": "#FFFFFF",
-      "disabled_text": "#6d736f",
-      "active_text": "#FFFFFF",
-      "normal_border": "#DDDDDD",
-      "hovered_border": "#B0B0B0",
-      "disabled_border": "#808080",
-      "selected_border": "#8080B0",
-      "active_border": "#8080B0"
-    },
     "font": {
       "name": "HanZi",
       "size": "14",
@@ -103,24 +85,6 @@
     }
   },
   "#confirmation_dialog.#cancel_button": {
-    "colours": {
-      "normal_bg": "#45494e",
-      "hovered_bg": "#35393e",
-      "disabled_bg": "#25292e",
-      "selected_bg": "#193754",
-      "active_bg": "#193754",
-      "dark_bg": "#15191e",
-      "normal_text": "#c5cbd8",
-      "hovered_text": "#FFFFFF",
-      "selected_text": "#FFFFFF",
-      "disabled_text": "#6d736f",
-      "active_text": "#FFFFFF",
-      "normal_border": "#DDDDDD",
-      "hovered_border": "#B0B0B0",
-      "disabled_border": "#808080",
-      "selected_border": "#8080B0",
-      "active_border": "#8080B0"
-    },
     "font": {
       "name": "HanZi",
       "size": "14",
@@ -133,6 +97,32 @@
       "shape": "rounded_rectangle",
       "border_width": "0.5",
       "tool_tip_delay": "1.0"
+    }
+  },
+  "#message_window.#dismiss_button": {
+    "font": {
+      "name": "HanZi",
+      "size": "16",
+      "regular_resource": {
+        "package": "resources.fonts",
+        "resource": "HanZi.ttf"
+      }
+    }
+  },
+  "selection_list": {
+    "colours": {
+      "dark_bg": "#21282D",
+      "normal_border": "#999999"
+    }
+  },
+  "selection_list.@selection_list_item": {
+    "font": {
+      "name": "HanZi",
+      "size": "8",
+      "regular_resource": {
+        "package": "resources.fonts",
+        "resource": "HanZi.ttf"
+      }
     }
   }
 }

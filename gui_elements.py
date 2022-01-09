@@ -12,7 +12,8 @@ class Button(pygame.Rect):
 
 
 class ImageButton(pygame.sprite.Sprite):
+    """Класс изображения-кнопки, наследуемый от pygame.Sprite"""
 
     def __init__(self, *args):
         super().__init__(args)
-        self.is_enabled = True
+        self.is_enabled = True  # доступ к спрайту

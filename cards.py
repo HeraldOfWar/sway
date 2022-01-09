@@ -26,8 +26,10 @@ class PlayCard(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()  # размеры карты
         self.info_image = self.image  # изображение для выдачи информации о карте
         self.deck_image = load_image(CARDS, f'deck_{self.short_name}.jpg')  # изображение "в руке"
-        self.battle_image = load_image(CARDS, f'battle_{self.short_name}.jpg')  # изображение на боевой точке
-        self.is_enabled = True
+        self.battle_image = load_image(CARDS, f'battle_{self.short_name}.jpg')  # изображение на игровом поле
+        self.battle_info_image = load_image(CARDS,
+                                            f'b_inf_{self.short_name}.jpg')  # изображение на боевой точке
+        self.is_enabled = True  # проверка карты, заблокирована ли она или нет
 
     def update(self, *args):
         """Реализация пассивной способности"""
@@ -99,7 +101,7 @@ class PlayCard(pygame.sprite.Sprite):
                 passive_ability_info.append(passive_ability_info1.strip())
 
         "Вывод всей информации в окне"
-        screen.blit(self.image, img_coord)
+        screen.blit(self.info_image, img_coord)
         screen.blit(title, title_coord)
         screen.blit(pace, pace_coord)
         screen.blit(chakra, chakra_coord)
