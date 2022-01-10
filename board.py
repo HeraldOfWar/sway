@@ -1,6 +1,5 @@
-import pygame
 from constants import *
-from activities import Fragment
+from activities import BattleFragment
 
 
 class BattlePoint(pygame.sprite.Group):
@@ -10,8 +9,8 @@ class BattlePoint(pygame.sprite.Group):
         """Инициализация боевой точки"""
         super().__init__()
         self.view = view  # вид боевой точки на игровом поле
-        self.info_fragment = Fragment('battlepoint', battlepoint_back, b_battlepoint,
-                                      self)  # информация о точке
+        self.info_fragment = BattleFragment('battlepoint', battlepoint_back, b_battlepoint,
+                                            self)  # информация о точке
         self.score = score  # количество ОЗ, которое генерируется точкой
         self.points, self.first_points, self.second_points = [], [], []  # позиции на боевой точке
         self.title, self.type = '', ''  # название и тип
@@ -34,20 +33,21 @@ class BattlePoint(pygame.sprite.Group):
             name_coord = name.get_rect()
             name_coord.center = self.view.center
             screen.blit(name, name_coord)  # вывод названия точки
-        for card in self.sprites():
-            if card.image != card.battle_image:
-                card.image = card.battle_image  # замена изображения карты
-                card.rect = card.image.get_rect()  # изменение координат карты
-                if card in self.point1_cards:
-                    card.rect.center = self.points[self.sprites().index(card)].center
-                else:
-                    card.rect.center = self.points[self.sprites().index(card) + 3].center
         self.draw(screen)  # отрисовка всех карт на точке на игровом поле
 
     def update_points(self):
         """Обновление союзных и вражеских позиций"""
         self.first_points = self.points[:3]
         self.second_points = self.points[3:]
+
+    def update_card_draw(self):
+        for card in self.sprites():
+            card.image = card.battle_image  # замена изображения карты
+            card.rect = card.image.get_rect()  # изменение координат карты
+            if card in self.point1_cards:
+                card.rect.center = self.points[self.point1_cards.index(card)].center
+            else:
+                card.rect.center = self.points[self.point2_cards.index(card) + 3].center
 
     def get_info(self):
         """Выдача информации о боевой точке"""
@@ -89,6 +89,7 @@ class Deck(pygame.sprite.Group):
         self.konoha_bonus_rect = konoha_bonus.get_rect()  # колода карт-бонусов Конохагакуре (размеры)
         self.iva_bonus_rect = iva_bonus.get_rect()  # колода карт-бонусов Ивагакуре (размеры)
         self.state = True  # состояние игровой колоды
+        self.is_moved = 0  # количество перемещённых карт (для 1 хода)
 
     def load(self):
         """Загрузка изображений карт игровой колоды"""
@@ -166,12 +167,18 @@ class Deck(pygame.sprite.Group):
                 endstep_button1.is_enabled = True
                 for card in self.sprites():
                     card.is_enabled = True
+                point1.is_enabled = True
+                point2.is_enabled = True
+                point3.is_enabled = True
             else:
                 self.state = True
                 bonus_button2.is_enabled = True
                 endstep_button2.is_enabled = True
                 for card in self.sprites():
                     card.is_enabled = True
+                point4.is_enabled = True
+                point5.is_enabled = True
+                point6.is_enabled = True
         else:  # если неактивна
             if self.fraction == self.main_fraction:
                 self.state = False
@@ -179,13 +186,23 @@ class Deck(pygame.sprite.Group):
                 endstep_button1.is_enabled = False
                 for card in self.sprites():
                     card.is_enabled = False
+                point1.is_enabled = False
+                point2.is_enabled = False
+                point3.is_enabled = False
             else:
                 self.state = False
                 bonus_button2.is_enabled = False
                 endstep_button2.is_enabled = False
                 for card in self.sprites():
                     card.is_enabled = False
+                point4.is_enabled = False
+                point5.is_enabled = False
+                point6.is_enabled = False
 
     def get_state(self):
         """Выдача состояния игровой колоды"""
         return self.state
+
+    def update_pace(self):
+        for card in self.sprites():
+            card.update_pace()

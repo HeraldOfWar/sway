@@ -40,7 +40,7 @@ def game_init():
                 battlefields[i].points.append(pygame.Rect(30 + 40 * j + 150 * (i % 3), 175, 40, 35))
             battlefields[i].update_points()
         elif i == 4:
-            battlefields[i].title = 'Первал Хорана'
+            battlefields[i].title = 'Перевал Хорана'
             battlefields[i].type = 'Перевал Хорана'
             for j in range(3):
                 battlefields[i].points.append(pygame.Rect(168 + 48 * j, 457, 48, 35))

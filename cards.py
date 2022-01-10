@@ -30,10 +30,12 @@ class PlayCard(pygame.sprite.Sprite):
         self.battle_info_image = load_image(CARDS,
                                             f'b_inf_{self.short_name}.jpg')  # изображение на боевой точке
         self.is_enabled = True  # проверка карты, заблокирована ли она или нет
+        self.default_pace, self.default_chakra, self.health = self.pace, self.chakra, self.health
 
-    def update(self, *args):
-        """Реализация пассивной способности"""
-        pass
+    def update_pace(self, *args):
+        """Обновление показателей"""
+        self.pace = self.default_pace
+        self.damage = self.pace + self.chakra + int(self.technic[0])
 
     def get_info(self, *args):
         """Выдача информации о карте"""
@@ -68,6 +70,7 @@ class PlayCard(pygame.sprite.Sprite):
         health = font.render(f'Здоровье: {self.health}', 1, pygame.Color('black'))
         health_coord = health.get_rect()
         health_coord.center = pygame.Rect(238, 492, 233, 47).center
+        self.damage = self.pace + self.chakra + int(self.technic[0])
         damage = font.render(f'Урон: {self.damage}', 1, pygame.Color('black'))
         damage_coord = damage.get_rect()
         damage_coord.center = pygame.Rect((8, 536, 232, 46)).center
