@@ -1,4 +1,5 @@
-import os, sqlite3
+import os
+import sqlite3
 import pygame
 from system_func import load_image
 from gui_elements import Button, ImageButton

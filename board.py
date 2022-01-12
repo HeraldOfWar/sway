@@ -9,12 +9,12 @@ class BattlePoint(pygame.sprite.Group):
         """Инициализация боевой точки"""
         super().__init__()
         self.view = view  # вид боевой точки на игровом поле
-        self.info_fragment = BattleFragment('battlepoint', battlepoint_back, b_battlepoint,
-                                            self)  # информация о точке
         self.score = score  # количество ОЗ, которое генерируется точкой
         self.points, self.first_points, self.second_points = [], [], []  # позиции на боевой точке
         self.title, self.type = '', ''  # название и тип
         self.point1_cards, self.point2_cards = [], []  # список союзных и вражеских карт на точке
+        self.info_fragment = BattleFragment('battlepoint', battlepoint_back, b_battlepoint,
+                                            self)  # информация о точке
 
     def output(self):
         """Отрисовка боевой точки"""
@@ -37,8 +37,8 @@ class BattlePoint(pygame.sprite.Group):
 
     def update_points(self):
         """Обновление союзных и вражеских позиций"""
-        self.first_points = self.points[:3]
-        self.second_points = self.points[3:]
+        self.first_points = [point1, point2, point3]
+        self.second_points = [point4, point5, point6]
 
     def update_card_draw(self):
         for card in self.sprites():
@@ -49,9 +49,7 @@ class BattlePoint(pygame.sprite.Group):
             else:
                 card.rect.center = self.points[self.point2_cards.index(card) + 3].center
 
-    def get_info(self):
-        """Выдача информации о боевой точке"""
-
+    def set_get_info_mode(self):
         """Установка позиций всех карт на точке"""
         for i in range(len(self.point1_cards)):  # союзных
             self.point1_cards[i].image = self.point1_cards[i].battle_info_image
@@ -71,7 +69,12 @@ class BattlePoint(pygame.sprite.Group):
                 self.point2_cards[i].rect.center = point5.center
             if i == 2:
                 self.point2_cards[i].rect.center = point6.center
-        self.draw(screen)  # отрисовка карт
+
+    def set_battle_mode(self, attacking, is_attacked):
+        attacking.rect.centery = pygame.Rect(0, 327, width, 233).centery
+        attacking.rect.x = pygame.Rect(0, 327, width, 233).x + 20
+        is_attacked.rect.centery = pygame.Rect(0, 327, width, 233).centery
+        is_attacked.rect.right = pygame.Rect(0, 327, width, 233).right - 20
 
 
 class Deck(pygame.sprite.Group):
@@ -94,15 +97,15 @@ class Deck(pygame.sprite.Group):
     def load(self):
         """Загрузка изображений карт игровой колоды"""
         if self.fraction == self.main_fraction:
-            for i in range(self.__len__()):
-                self.sprites()[i].image = self.sprites()[i].deck_image
-                self.sprites()[i].rect = self.sprites()[i].image.get_rect()
-                self.sprites()[i].rect.center = pygame.Rect(126, height - 140, 229, 135).center
+            for i in range(len(self.hand)):
+                self.hand[i].image = self.hand[i].deck_image
+                self.hand[i].rect = self.hand[i].image.get_rect()
+                self.hand[i].rect.center = pygame.Rect(126, height - 140, 229, 135).center
         else:
-            for i in range(self.__len__()):
-                self.sprites()[i].image = self.sprites()[i].deck_image
-                self.sprites()[i].rect = self.sprites()[i].image.get_rect()
-                self.sprites()[i].rect.center = pygame.Rect(126, 5, 229, 135).center
+            for i in range(len(self.hand)):
+                self.hand[i].image = self.hand[i].deck_image
+                self.hand[i].rect = self.hand[i].image.get_rect()
+                self.hand[i].rect.center = pygame.Rect(126, 5, 229, 135).center
 
     def output(self):
         """Отрисовка игровой колоды"""

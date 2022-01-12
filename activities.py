@@ -239,9 +239,10 @@ class BattleFragment(Fragment):
         self.mode = 'static'
         self.current_card = None
         self.main_activity, self.card_info_fragment = None, None
-        self.selection_list = None
+        self.selection_list, self.move_confirm_dialog = None, None
 
     def run(self):
+        self.battlepoint.set_get_info_mode()
         while True:
             for event in pygame.event.get():  # pygame ждёт, чтобы пользователь что-то сделал
                 if event.type == pygame.QUIT:  # ты куда???... (выход при нажатии на системный крестик)
@@ -259,24 +260,49 @@ class BattleFragment(Fragment):
                     if event.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
                         if event.ui_element == self.termination_dialog:
                             terminate()
+                        if event.ui_element == self.move_confirm_dialog:
+                            self.set_static_mode()
+                            if self.main_activity.first_cards.get_state():
+                                self.main_activity.first_cards.update_hand([self.current_card])
+                                self.main_activity.first_cards.load()
+                                self.battlepoint.point1_cards.remove(self.current_card)
+                                self.battlepoint.remove(self.current_card)
+                                self.battlepoint.update_card_draw()
+                                self.current_card.is_enabled = True
+                                return
+                            else:
+                                self.main_activity.second_cards.update_hand([self.current_card])
+                                self.main_activity.second_cards.load()
+                                self.battlepoint.point2_cards.remove(self.current_card)
+                                self.battlepoint.remove(self.current_card)
+                                self.battlepoint.update_card_draw()
+                                self.current_card.is_enabled = True
+                                return
                     elif event.user_type == pygame_gui.UI_BUTTON_PRESSED:
-                        for element in self.ui_buttons:
-                            if element == event.ui_element and element.is_enabled:
-                                return self.mouse_click(event.ui_element, True)
-                        if self.termination_dialog:
-                            if event.ui_element == self.termination_dialog.cancel_button or \
-                                    event.ui_element == self.termination_dialog.close_window_button:
-                                self.set_static_mode()
-                                self.termination_dialog = None
-                            if self.selection_list:
-                                self.block_battlepoint()
-                        if self.exception_msg:
-                            if event.ui_element == self.exception_msg.close_window_button or \
-                                    event.ui_element == self.exception_msg.dismiss_button:
-                                self.set_static_mode()
+                            for element in self.ui_buttons:
+                                if element == event.ui_element and element.is_enabled:
+                                    return self.mouse_click(event.ui_element, True)
+                            if self.termination_dialog:
+                                if event.ui_element == self.termination_dialog.cancel_button or \
+                                        event.ui_element == self.termination_dialog.close_window_button:
+                                    self.set_static_mode()
+                                    self.termination_dialog = None
+                                if self.selection_list:
+                                    self.block_battlepoint()
+                            if self.move_confirm_dialog:
+                                if event.ui_element == self.move_confirm_dialog.cancel_button or \
+                                        event.ui_element == self.move_confirm_dialog.close_window_button:
+                                    self.set_static_mode()
+                            if self.exception_msg:
+                                if event.ui_element == self.exception_msg.close_window_button or \
+                                        event.ui_element == self.exception_msg.dismiss_button:
+                                    self.set_static_mode()
                     elif event.user_type == pygame_gui.UI_SELECTION_LIST_NEW_SELECTION:  # выбор элемента
                         if event.ui_element == self.selection_list:  # всплывающей активности
-                            if event.text == 'Переместить':  # переход в состояние перемещения карты
+                            if event.text == 'Атаковать':
+                                self.set_static_mode()
+                                self.set_attack_mode()
+                            elif event.text == 'Переместить':  # переход в состояние перемещения карты
                                 self.main_activity.card_is_moving = self.current_card
                                 if self.main_activity.first_cards.step == 0 and \
                                         self.main_activity.second_cards.step == 0:
@@ -303,6 +329,29 @@ class BattleFragment(Fragment):
                             elif event.text == 'Информация':  # выдача информации о карте
                                 self.set_static_mode()
                                 self.card_info_fragment.run(card=self.current_card)
+                            elif event.text == 'Вернуться в деревню':
+                                if self.main_activity.first_cards.step == 0 and \
+                                        self.main_activity.second_cards.step == 0:
+                                    self.exception_msg = pygame_gui.windows.UIMessageWindow(
+                                        rect=pygame.Rect(width // 2 - 150, height // 2 - 100, 300, 200),
+                                        html_message='В первом ходу нельзя дважды переместить одну карту!',
+                                        manager=self.manager,
+                                        window_title='Ошибка')
+                                    self.exception_msg.dismiss_button.set_text('OK')
+                                    self.exception_msg.close_window_button.set_text('X')
+                                else:
+                                    self.main_activity.card_is_moving = self.current_card
+                                    self.move_confirm_dialog = pygame_gui.windows.UIConfirmationDialog(
+                                        rect=pygame.Rect(width // 2 - 150, height // 2 - 100, 300, 200),
+                                        manager=self.manager,
+                                        window_title='Подтверждение хода',
+                                        action_long_desc=f'Вы уверены, что хотите переместить '
+                                                         f'{self.main_activity.card_is_moving.name} '
+                                                         f'в деревню (в "руку")?',
+                                        action_short_name='OK',
+                                        blocking=True)
+                                    self.move_confirm_dialog.close_window_button.set_text('X')
+                                self.block_battlepoint()
                             else:  # возвращаемся в обычное состояние
                                 self.set_static_mode()
                             self.selection_list.kill()
@@ -340,7 +389,7 @@ class BattleFragment(Fragment):
         for point in self.buttons:
             self.draw_points(point)
         screen.blit(self.screen2, (0, 0))  # отрисовка второго холста
-        self.battlepoint.get_info()  # выдача информации о боевой точке
+        self.battlepoint.draw(screen)  # выдача информации о боевой точке
 
     def load_ui(self, ui_element):
         """Отрисовка всех кнопок"""
@@ -404,55 +453,106 @@ class BattleFragment(Fragment):
                 button.is_hovered = False
             if ui:
                 if view.rect == exit_button:
+                    self.set_static_mode()
                     return
             if view == point1 and len(self.battlepoint.point1_cards) > 0:
+                item_list = ['–', 'Атаковать', 'Переместить', 'Информация']
                 self.selection_list = pygame_gui.elements.UISelectionList(
-                    relative_rect=pygame.Rect(view.right, view.top, 80, 120),
-                    item_list=['–', 'Переместить', 'Информация', 'Атаковать'],
+                    relative_rect=pygame.Rect(view.right, view.top, 125, 150),
+                    item_list=item_list,
                     default_selection='–',
                     manager=self.manager)
+                if self.battlepoint.view == b_pass1 or self.battlepoint.view == b_pass2 \
+                        or self.battlepoint.view == b_pass3:
+                    item_list.append('Вернуться в деревню')
+                    self.selection_list.set_item_list(item_list)
+                self.selection_list.set_default_selection()
                 self.current_card = self.battlepoint.point1_cards[0]
                 self.block_battlepoint()
             if view == point2 and len(self.battlepoint.point1_cards) > 1:
+                item_list = ['–', 'Атаковать', 'Переместить', 'Информация']
                 self.selection_list = pygame_gui.elements.UISelectionList(
-                    relative_rect=pygame.Rect(view.right, view.top, 80, 120),
-                    item_list=['–', 'Переместить', 'Информация', 'Атаковать'],
+                    relative_rect=pygame.Rect(view.right, view.top, 125, 150),
+                    item_list=item_list,
                     default_selection='–',
                     manager=self.manager)
+                if self.battlepoint.view == b_pass1 or self.battlepoint.view == b_pass2 \
+                        or self.battlepoint.view == b_pass3:
+                    item_list.append('Вернуться в деревню')
+                    self.selection_list.set_item_list(item_list)
+                self.selection_list.set_default_selection()
                 self.current_card = self.battlepoint.point1_cards[1]
                 self.block_battlepoint()
             if view == point3 and len(self.battlepoint.point1_cards) > 2:
+                item_list = ['–', 'Атаковать', 'Переместить', 'Информация']
                 self.selection_list = pygame_gui.elements.UISelectionList(
-                    relative_rect=pygame.Rect(view.left - 80, view.top, 80, 120),
-                    item_list=['–', 'Переместить', 'Информация', 'Атаковать'],
+                    relative_rect=pygame.Rect(view.right - 245, view.top, 125, 150),
+                    item_list=item_list,
                     default_selection='–',
                     manager=self.manager)
+                if self.battlepoint.view == b_pass1 or self.battlepoint.view == b_pass2 \
+                        or self.battlepoint.view == b_pass3:
+                    item_list.append('Вернуться в деревню')
+                    self.selection_list.set_item_list(item_list)
+                self.selection_list.set_default_selection()
                 self.current_card = self.battlepoint.point1_cards[2]
                 self.block_battlepoint()
             if view == point4 and len(self.battlepoint.point2_cards) > 0:
+                item_list = ['–', 'Атаковать', 'Переместить', 'Информация']
                 self.selection_list = pygame_gui.elements.UISelectionList(
-                    relative_rect=pygame.Rect(view.right, view.top, 80, 120),
-                    item_list=['–', 'Переместить', 'Информация', 'Атаковать'],
+                    relative_rect=pygame.Rect(view.right, view.top, 125, 150),
+                    item_list=item_list,
                     default_selection='–',
                     manager=self.manager)
+                if self.battlepoint.view == b_pass4 or self.battlepoint.view == b_pass5 \
+                        or self.battlepoint.view == b_pass6:
+                    item_list.append('Вернуться в деревню')
+                    self.selection_list.set_item_list(item_list)
+                self.selection_list.set_default_selection()
                 self.current_card = self.battlepoint.point2_cards[0]
                 self.block_battlepoint()
             if view == point5 and len(self.battlepoint.point2_cards) > 1:
+                item_list = ['–', 'Атаковать', 'Переместить', 'Информация']
                 self.selection_list = pygame_gui.elements.UISelectionList(
-                    relative_rect=pygame.Rect(view.right, view.top, 80, 120),
-                    item_list=['–', 'Переместить', 'Информация', 'Атаковать'],
+                    relative_rect=pygame.Rect(view.right, view.top, 125, 150),
+                    item_list=item_list,
                     default_selection='–',
                     manager=self.manager)
+                if self.battlepoint.view == b_pass4 or self.battlepoint.view == b_pass5 \
+                        or self.battlepoint.view == b_pass6:
+                    item_list.append('Вернуться в деревню')
+                    self.selection_list.set_item_list(item_list)
+                self.selection_list.set_default_selection()
                 self.current_card = self.battlepoint.point2_cards[1]
                 self.block_battlepoint()
             if view == point6 and len(self.battlepoint.point2_cards) > 2:
+                item_list = ['–', 'Атаковать', 'Переместить', 'Информация']
                 self.selection_list = pygame_gui.elements.UISelectionList(
-                    relative_rect=pygame.Rect(view.left - 80, view.top, 80, 120),
-                    item_list=['–', 'Переместить', 'Информация', 'Атаковать'],
+                    relative_rect=pygame.Rect(view.right - 245, view.top, 125, 150),
+                    item_list=item_list,
                     default_selection='–',
                     manager=self.manager)
+                if self.battlepoint.view == b_pass4 or self.battlepoint.view == b_pass5 \
+                        or self.battlepoint.view == b_pass6:
+                    item_list.append('Вернуться в деревню')
+                    self.selection_list.set_item_list(item_list)
+                self.selection_list.set_default_selection()
                 self.current_card = self.battlepoint.point2_cards[2]
                 self.block_battlepoint()
+        if self.mode == 'attack':
+            if view == point1:
+                self.set_static_mode()
+            else:
+                for point in self.buttons[1:]:
+                    if view == point:
+                        if self.current_card in self.battlepoint.point1_cards:
+                            i = self.battlepoint.second_points.index(view)
+                            self.battlepoint.set_battle_mode(self.current_card,
+                                                             self.battlepoint.point2_cards[i])
+                        else:
+                            i = self.battlepoint.first_points.index(view)
+                            self.battlepoint.set_battle_mode(self.current_card,
+                                                             self.battlepoint.point1_cards[i])
 
     def set_static_mode(self):
         """Установка стандартного состояния игровой активности"""
@@ -468,6 +568,59 @@ class BattleFragment(Fragment):
             self.main_activity.second_cards.set_state(False)
         else:
             self.main_activity.first_cards.set_state(False)
+
+    def set_attack_mode(self):
+        self.mode = 'attack'
+        if self.current_card in self.main_activity.first_cards:
+            if self.battlepoint.point1_cards.index(self.current_card) == 0:
+                point2.is_enabled, point3.is_enabled = False, False
+                for i in range(len(self.battlepoint.second_points)):
+                    if len(self.battlepoint.point2_cards) >= i:
+                        self.battlepoint.second_points[i].is_enabled = True
+                        self.battlepoint.second_points[i].is_hovered = True
+                    else:
+                        self.battlepoint.second_points[i].is_enabled = False
+            elif self.battlepoint.point1_cards.index(self.current_card) == 1:
+                point1.is_enabled, point3.is_enabled = False, False
+                for i in range(len(self.battlepoint.second_points)):
+                    if len(self.battlepoint.point2_cards) >= i:
+                        self.battlepoint.second_points[i].is_enabled = True
+                        self.battlepoint.second_points[i].is_hovered = True
+                    else:
+                        self.battlepoint.second_points[i].is_enabled = False
+            elif self.battlepoint.point1_cards.index(self.current_card) == 2:
+                point1.is_enabled, point2.is_enabled = False, False
+                for i in range(len(self.battlepoint.second_points)):
+                    if len(self.battlepoint.point2_cards) >= i:
+                        self.battlepoint.second_points[i].is_enabled = True
+                        self.battlepoint.second_points[i].is_hovered = True
+                    else:
+                        self.battlepoint.second_points[i].is_enabled = False
+        if self.current_card in self.main_activity.second_cards:
+            if self.battlepoint.point2_cards.index(self.current_card) == 0:
+                point5.is_enabled, point6.is_enabled = False, False
+                for i in range(len(self.battlepoint.first_points)):
+                    if len(self.battlepoint.first_points) >= i:
+                        self.battlepoint.first_points[i].is_enabled = True
+                        self.battlepoint.first_points[i].is_hovered = True
+                    else:
+                        self.battlepoint.first_points[i].is_enabled = False
+            elif self.battlepoint.point2_cards.index(self.current_card) == 1:
+                point4.is_enabled, point6.is_enabled = False, False
+                for i in range(len(self.battlepoint.first_points)):
+                    if len(self.battlepoint.first_points) >= i:
+                        self.battlepoint.first_points[i].is_enabled = True
+                        self.battlepoint.first_points[i].is_hovered = True
+                    else:
+                        self.battlepoint.first_points[i].is_enabled = False
+            elif self.battlepoint.point2_cards.index(self.current_card) == 2:
+                point4.is_enabled, point5.is_enabled = False, False
+                for i in range(len(self.battlepoint.first_points)):
+                    if len(self.battlepoint.first_points) >= i:
+                        self.battlepoint.first_points[i].is_enabled = True
+                        self.battlepoint.first_points[i].is_hovered = True
+                    else:
+                        self.battlepoint.first_points[i].is_enabled = False
 
     def block_battlepoint(self):
         """Блокировка игрового поля"""
@@ -845,12 +998,18 @@ class GameActivity(BasicActivity):
                 self.second_cards.set_state(True)
                 self.first_cards.step += 1
                 self.second_cards.update_pace()
+                for battlepoint in self.battlepoints:
+                    if len(battlepoint.point1_cards) > len(battlepoint.point2_cards):
+                        self.first_cards.score += battlepoint.score
                 return
             elif view == endstep_button2:  # 2 игрок заканчивает ход
                 self.first_cards.set_state(True)
                 self.second_cards.set_state(False)
                 self.second_cards.step += 1
                 self.first_cards.update_pace()
+                for battlepoint in self.battlepoints:
+                    if len(battlepoint.point1_cards) < len(battlepoint.point2_cards):
+                        self.second_cards.score += battlepoint.score
                 return
             elif view == bonus_button1:
                 if self.first_cards.score >= 15:  # если хватает ОЗ, покупаем бонусную карту
@@ -1064,5 +1223,5 @@ class GameActivity(BasicActivity):
             button.is_enabled = False
 
     def get_rules(self):
-        """Зпуск фрагмента правил"""
+        """Запуск фрагмента правил"""
         self.fragments[0].run()
