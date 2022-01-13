@@ -1,4 +1,5 @@
 import pygame
+import random
 from system_func import load_image
 from constants import *
 
@@ -20,22 +21,125 @@ class PlayCard(pygame.sprite.Sprite):
         self.resist = args[7]  # стойкость (сопротивление)
         self.health = args[8]  # здоровье
         self.technic = args[9].split()  # техника (урон и вид)
-        self.synergy = args[10]  # связь с другими картами (увеличивает урон)
-        self.damage = self.pace + self.chakra + int(self.technic[0])  # урон складывается из трёх показателей
-        self.isalive = True  # параметр, отвечающий за то, жива ли карта или нет
+        self.synergy = args[10].split()  # связь с другими картами (увеличивает урон)
+        self.damage = self.pace + self.chakra + int(self.technic[0])
         self.rect = self.image.get_rect()  # размеры карты
         self.info_image = self.image  # изображение для выдачи информации о карте
         self.deck_image = load_image(CARDS, f'deck_{self.short_name}.jpg')  # изображение "в руке"
         self.battle_image = load_image(CARDS, f'battle_{self.short_name}.jpg')  # изображение на игровом поле
         self.battle_info_image = load_image(CARDS,
                                             f'b_inf_{self.short_name}.jpg')  # изображение на боевой точке
+        self.is_alive = True  # параметр, отвечающий за то, жива ли карта или нет
         self.is_enabled = True  # проверка карты, заблокирована ли она или нет
-        self.default_pace, self.default_chakra, self.health = self.pace, self.chakra, self.health
+        self.is_attacked = False
+        self.passive_is_used = False
+        self.default_pace, self.default_chakra, self.default_health = self.pace, self.chakra, self.health
+        self.default_rect = self.rect
+        self.point = self.groups()[0]
+        self.pieces = pygame.sprite.Group()
+
+    def can_attack(self):
+        if self.chakra == 0:
+            return 'chakra'
+        if self.is_attacked:
+            return 'is_attacked'
+        if self.fraction == self.groups()[0].main_fraction:
+            if len(self.point.point2_cards) == 0:
+                return 'len_cards'
+        else:
+            if len(self.point.point1_cards) == 0:
+                return 'len_cards'
+        return True
+
+    def attack(self, enemy):
+        self.damage = self.set_damage()
+        enemy.get_damage(self.damage)
+        self.chakra -= 1
+
+    def can_move(self, new_point=None):
+        if self.pace == 0:
+            return 'pace'
+        if self.groups()[0].step == 0 and self.groups()[0].is_moved >= 3:
+            return 'step'
+        if self.fraction == self.groups()[0].main_fraction and new_point:
+            if len(new_point.point1_cards) == 3:
+                return 'len_cards'
+        elif self.fraction != self.groups()[0].main_fraction and new_point:
+            if len(new_point.point2_cards) == 3:
+                return 'len_cards'
+        return True
+
+    def move(self, last_point, new_point):
+        if self.groups()[0].main_fraction == self.fraction:
+            if last_point != self.groups()[0]:
+                last_point.point1_cards.remove(self)
+                last_point.remove(self)
+                last_point.update_card_draw()
+            else:
+                last_point.hand.remove(self)
+            if new_point != self.groups()[0]:
+                new_point.point1_cards.append(self)
+                new_point.add(self)
+                new_point.update_card_draw()
+            else:
+                new_point.update_hand([self])
+                new_point.load()
+        else:
+            if last_point != self.groups()[0]:
+                last_point.point2_cards.remove(self)
+                last_point.remove(self)
+                last_point.update_card_draw()
+            else:
+                last_point.hand.remove(self)
+            if new_point != self.groups()[0]:
+                new_point.point2_cards.append(self)
+                new_point.add(self)
+                new_point.update_card_draw()
+            else:
+                new_point.update_hand([self])
+                new_point.load()
+        self.point = new_point
+        self.pace -= 1
+
+    def recover(self):
+        if self.health < self.default_health:
+            self.health += 1
+        if self.chakra < self.default_chakra:
+            self.chakra += 1
 
     def update_pace(self, *args):
-        """Обновление показателей"""
+        """Обновление cкорости"""
         self.pace = self.default_pace
-        self.damage = self.pace + self.chakra + int(self.technic[0])
+
+    def set_damage(self):
+        damage = self.pace + self.chakra + int(self.technic[0])
+        if self.groups():
+            if self.point != self.groups()[0]:
+                if self.fraction == self.groups()[0].main_fraction:
+                    for card in self.point.point1_cards:
+                        if card.name.split()[0] in self.synergy:
+                            return damage + 1
+                else:
+                    for card in self.point.point2_cards:
+                        if card.name.split()[0] in self.synergy:
+                            return damage + 1
+        return damage
+
+    def get_damage(self, damage):
+        if self.health + self.resist <= damage:
+            self.is_alive = False
+            if self.fraction == self.groups()[0].main_fraction:
+                self.point.point1_cards.remove(self)
+            else:
+                self.point.point2_cards.remove(self)
+            self.kill()
+            self.death()
+        else:
+            if self.resist <= damage:
+                self.health -= damage - self.resist
+
+    def get_passive(self):
+        return False
 
     def get_info(self, *args):
         """Выдача информации о карте"""
@@ -70,14 +174,13 @@ class PlayCard(pygame.sprite.Sprite):
         health = font.render(f'Здоровье: {self.health}', 1, pygame.Color('black'))
         health_coord = health.get_rect()
         health_coord.center = pygame.Rect(238, 492, 233, 47).center
-        self.damage = self.pace + self.chakra + int(self.technic[0])
-        damage = font.render(f'Урон: {self.damage}', 1, pygame.Color('black'))
+        damage = font.render(f'Урон: {self.set_damage()}', 1, pygame.Color('black'))
         damage_coord = damage.get_rect()
         damage_coord.center = pygame.Rect((8, 536, 232, 46)).center
-        if len(self.synergy) > 10:  # установка размера в зависимости от длины текста
-            synergy = font1.render(f'Синергия: {self.synergy}', 1, pygame.Color('black'))
+        if len(", ".join(self.synergy)) > 10:  # установка размера в зависимости от длины текста
+            synergy = font1.render(f'Синергия: {", ".join(self.synergy)}', 1, pygame.Color('black'))
         else:
-            synergy = font.render(f'Синергия: {self.synergy}', 1, pygame.Color('black'))
+            synergy = font.render(f'Синергия: {", ".join(self.synergy)}', 1, pygame.Color('black'))
         synergy_coord = synergy.get_rect()
         synergy_coord.center = pygame.Rect((238, 536, 233, 46)).center
         technic = b_font3.render('Техника:', 1, pygame.Color('black'))
@@ -122,6 +225,23 @@ class PlayCard(pygame.sprite.Sprite):
             line = font2.render(passive_ability_info[i], 1, pygame.Color('black'))
             y = 729 + 20 * i
             screen.blit(line, (16, y))
+
+    def death(self):
+        for x in range(0, self.rect.width, self.rect.width // 5):
+            for y in range(0, self.rect.height, self.rect.height // 5):
+                piece = CardPiece(self.image, (self.rect.x, self.rect.y), x, y, random.choice(range(-5, 6)),
+                                  random.choice(range(-5, 10)), self.pieces)
+
+    def update(self):
+        self.rect = self.rect.move(random.randrange(3) - 1, random.randrange(3) - 1)
+        if self.rect.x - self.default_rect.x > 2:
+            self.rect = self.rect.move(-1, 0)
+        elif self.default_rect.x - self.rect.x > 2:
+            self.rect = self.rect.move(1, 0)
+        elif self.rect.y - self.default_rect.y > 2:
+            self.rect = self.rect.move(0, -1)
+        elif self.default_rect.y - self.rect.y > 2:
+            self.rect = self.rect.move(0, 1)
 
     def __str__(self):
         """Представление объекта карты в виде строки"""
@@ -181,66 +301,129 @@ class BonusCard(pygame.sprite.Sprite):
         return self.name
 
 
+class CardPiece(pygame.sprite.Sprite):
+
+    def __init__(self, image, pos, x, y, dx, dy, *group):
+        super().__init__(group)
+        self.image = image.subsurface(x, y, image.get_rect().width // 5, image.get_rect().height // 5)
+        self.rect = self.image.get_rect()
+        self.velocity = [dx, dy]
+        self.rect.x, self.rect.y = pos[0] + x, pos[1] + y
+        self.gravity = 1
+
+    def update(self):
+        self.velocity[1] += self.gravity
+        self.rect.x += self.velocity[0]
+        self.rect.y += self.velocity[1]
+        if not self.rect.colliderect(screen.get_rect()):
+            self.kill()
+
+
 """Классы игровых карт Конохагакуре"""
 class Shu(PlayCard):
-    def update(self, *args):
-        pass
+    pass
 
 
 class Pashke(PlayCard):
-    def update(self, *args):
-        pass
+    pass
 
 
 class Akemi(PlayCard):
-    def update(self, *args):
-        pass
+
+    def get_passive(self):
+        if self.groups():
+            if self.point != self.groups()[0]:
+                if self.fraction == self.groups()[0].main_fraction:
+                    for card in self.point.point1_cards:
+                        if card.short_name == 'shu':
+                            return True
+                else:
+                    for card in self.point.point2_cards:
+                        if card.short_name == 'shu':
+                            return True
+        return False
+
 
 
 class Raik(PlayCard):
-    def update(self, *args):
-        pass
+
+    def move(self, last_point, new_point):
+        if self.groups()[0].main_fraction == self.fraction:
+            if last_point != self.groups()[0]:
+                last_point.point1_cards.remove(self)
+                last_point.remove(self)
+                last_point.update_card_draw()
+            else:
+                last_point.hand.remove(self)
+            if new_point != self.groups()[0]:
+                new_point.point1_cards.append(self)
+                new_point.add(self)
+                new_point.update_card_draw()
+            else:
+                new_point.update_hand([self])
+                new_point.load()
+        else:
+            if last_point != self.groups()[0]:
+                last_point.point2_cards.remove(self)
+                last_point.remove(self)
+                last_point.update_card_draw()
+            else:
+                last_point.hand.remove(self)
+            if new_point != self.groups()[0]:
+                new_point.point2_cards.append(self)
+                new_point.add(self)
+                new_point.update_card_draw()
+            else:
+                new_point.update_hand([self])
+                new_point.load()
+        self.point = new_point
+        self.pace -= 1
 
 
 class Kentaru(PlayCard):
-    def update(self, *args):
-        pass
+    pass
 
 
 class Hiruko(PlayCard):
-    def update(self, *args):
-        pass
+
+    def get_passive(self):
+        if self.passive_is_used:
+            return False
+        return True
+
 
 
 """Классы игровых карт Ивагакуре"""
 class Keiko(PlayCard):
-    def update(self, *args):
-        pass
+
+    def get_passive(self):
+        return True
 
 
 class Akito(PlayCard):
-    def update(self, *args):
-        pass
+
+    def get_passive(self):
+        return True
 
 
 class Ryu(PlayCard):
-    def update(self, *args):
-        pass
+
+    def get_passive(self):
+        if self.passive_is_used:
+            return False
+        return True
 
 
 class Kitsu(PlayCard):
-    def update(self, *args):
-        pass
+    pass
 
 
 class Benkei(PlayCard):
-    def update(self, *args):
-        pass
+    pass
 
 
 class Teeru(PlayCard):
-    def update(self, *args):
-        pass
+    pass
 
 
 """Классы бонусных карт Конохагакуре"""

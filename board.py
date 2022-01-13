@@ -13,7 +13,7 @@ class BattlePoint(pygame.sprite.Group):
         self.points, self.first_points, self.second_points = [], [], []  # позиции на боевой точке
         self.title, self.type = '', ''  # название и тип
         self.point1_cards, self.point2_cards = [], []  # список союзных и вражеских карт на точке
-        self.info_fragment = BattleFragment('battlepoint', battlepoint_back, b_battlepoint,
+        self.info_fragment = BattleFragment('battlepoint', battlepoint_back, b_points,
                                             self)  # информация о точке
 
     def output(self):
@@ -70,11 +70,16 @@ class BattlePoint(pygame.sprite.Group):
             if i == 2:
                 self.point2_cards[i].rect.center = point6.center
 
-    def set_battle_mode(self, attacking, is_attacked):
-        attacking.rect.centery = pygame.Rect(0, 327, width, 233).centery
-        attacking.rect.x = pygame.Rect(0, 327, width, 233).x + 20
-        is_attacked.rect.centery = pygame.Rect(0, 327, width, 233).centery
-        is_attacked.rect.right = pygame.Rect(0, 327, width, 233).right - 20
+    def set_battle_mode(self, friend, enemy):
+        friend.rect.centery = pygame.Rect(0, 327, width, 233).centery
+        friend.rect.x = pygame.Rect(0, 327, width, 233).x + 20
+        enemy.rect.centery = pygame.Rect(0, 327, width, 233).centery
+        enemy.rect.right = pygame.Rect(0, 327, width, 233).right - 20
+
+    def battle(self, friend, enemy):
+        friend.attack(enemy)
+        if enemy.is_alive:
+            enemy.attack(friend)
 
 
 class Deck(pygame.sprite.Group):
@@ -87,8 +92,8 @@ class Deck(pygame.sprite.Group):
         self.fraction = fraction  # фракция колоды
         self.score = 0  # количество ОЗ
         self.step = 0  # ход
-        self.current = 0  # индекс текущей карты
-        self.hand = self.sprites()
+        self.hand = self.sprites()  # "рука"
+        self.current = 0  # индекс текущей карты в "руке"
         self.konoha_bonus_rect = konoha_bonus.get_rect()  # колода карт-бонусов Конохагакуре (размеры)
         self.iva_bonus_rect = iva_bonus.get_rect()  # колода карт-бонусов Ивагакуре (размеры)
         self.state = True  # состояние игровой колоды
@@ -152,6 +157,10 @@ class Deck(pygame.sprite.Group):
             else:
                 screen.blit(line, (width - 118, height - 75 + 22 * i))
 
+    def update_pace(self):
+        for card in self.sprites():
+            card.update_pace()
+
     def set_hand(self):
         """Заполнение карт в руке"""
         self.hand = self.sprites()
@@ -205,7 +214,3 @@ class Deck(pygame.sprite.Group):
     def get_state(self):
         """Выдача состояния игровой колоды"""
         return self.state
-
-    def update_pace(self):
-        for card in self.sprites():
-            card.update_pace()

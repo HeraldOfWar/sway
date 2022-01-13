@@ -1,6 +1,6 @@
 import pygame
 import cards
-from activities import BasicActivity, GameActivity, Fragment
+from activities import BasicActivity, GameActivity, Fragment, MenuFragment
 from board import BattlePoint, Deck
 from constants import *
 
@@ -88,23 +88,33 @@ def game_init():
     ambitions = cards.Ambitions(f'{BONUSCARDS_DATA[9][3]}.jpg', BONUSCARDS_DATA[9], iva_bonusdeck)
 
     """Создание всех окон (активностей и фрагментов)"""
-    cf_activity = BasicActivity(cf_back, sprites=cf_sprites, old_activity=start_activity)
+    rules = Fragment('rules', rules_back, buttons=[ok_button])
+    cf_activity = BasicActivity(cf_back, sprites=cf_sprites, old_activity=rules)
     info_activity = BasicActivity(basic_back, buttons=[exit_button], sprites=info_sprites,
                                   old_activity=cf_activity)
     card_info_activity = BasicActivity(basic_back, buttons=[escape_button, exit_button],
                                        old_activity=cf_activity)
-    rules = Fragment('rules', rules_back, buttons=[ok_button])
-    card_info_fragment = Fragment('card_info', basic_back, buttons=[exit_button])
+    main_menu = MenuFragment('menu', basic_back, buttons=menu_buttons)
+    new_rules = Fragment('rules1', basic_back, buttons=[escape_button])
+    basic_help = Fragment('help', rules_back, buttons=[ok_button])
+    new_basic_help = Fragment('help1', basic_back, buttons=[escape_button])
+    card_info_fragment = Fragment('card_info', basic_back, buttons=[escape_button])
+    fragments = [main_menu, new_rules, basic_help, card_info_fragment, new_basic_help]
     game_activity = GameActivity(k_battlefield, buttons=game_buttons,
                                  decks=[konoha_deck, iva_deck],
                                  battlepoints=battlefields,
-                                 fragments=[rules, card_info_fragment])  # главная игровая активность
+                                 fragments=fragments)  # главная игровая активность
     """Настройка навигации"""
-    start_activity.next_activity = cf_activity
+    start_activity.next_activity = rules
+    rules.old_activity = start_activity
+    rules.next_activity = cf_activity
     cf_activity.next_activity = info_activity
     cf_activity.start_game_activity = game_activity
     info_activity.next_activity = card_info_activity
     card_info_activity.previous_activity = info_activity
+    for fragment in fragments:
+        fragment.main_activity = game_activity
+
 
     """Инициализация спрайтов в окне выбора фракции"""
     konohagakure.image, ivagakure.image = load_image(BACK_N_BUT, 'konoha_background.jpg'), \
@@ -164,6 +174,7 @@ def main():
 
 if __name__ == '__main__':
     pygame.init()  # инициализация pygame
+    pygame.display.set_icon(icon)
     pygame.display.set_caption('SWAY')  # установка названия
 
     start_activity = BasicActivity(start_back, buttons=[play_button])  # стартовое окно
