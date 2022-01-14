@@ -21,7 +21,7 @@ class BasicActivity:
         # пользовательского интерфейса
         for button in self.buttons:
             self.load_ui(button)  # преобразование кнопок в ui-кнопки
-        self.termination_dialog =  None  # подтверждение хода и выхода
+        self.termination_dialog = None  # подтверждение выхода
         self.exception_msg = None  # сообщение с ошибкой
 
     def run(self, card=None):
@@ -29,20 +29,8 @@ class BasicActivity:
         while True:  # а вот и цикл!
             for event in pygame.event.get():  # pygame ждёт, чтобы пользователь что-то сделал
                 if event.type == pygame.QUIT:  # ты куда???... (выход при нажатии на системный крестик)
-                    """Создание диалогового окна для подтверждения выхода из игры"""
-                    self.termination_dialog = pygame_gui.windows.UIConfirmationDialog(
-                        rect=pygame.Rect(width // 2 - 150, height // 2 - 100, 300, 200),  # размеры
-                        manager=self.manager,  # менеджер
-                        window_title='Подтверждение выхода',  # название
-                        action_long_desc='Вы уверены, что хотите выйти?',  # основной тескт
-                        action_short_name='OK',  # текст кнопки подтверждения
-                        blocking=True  # блокировка всех ui-элементов
-                    )
-                    self.termination_dialog.close_window_button.set_text('x')
-                    for sprite in self.sprites:
-                        sprite.is_enabled = False  # блокировка всех спрайтов
-                    for button in self.buttons:
-                        button.is_enabled = False  # и кнопок
+                    self.get_termination_dialog()  # спросим у пользователя, уверен ли он в своём выходе
+                    self.block_activity()  # блокируем активность
                 elif event.type == pygame.USEREVENT:  # проверка событий, связанных с ui-элементами
                     if event.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:  # подтверждение
                         terminate()  # выход
@@ -52,10 +40,7 @@ class BasicActivity:
                                 return self.mouse_click(element)
                         if event.ui_element == self.termination_dialog.cancel_button or \
                                 event.ui_element == self.termination_dialog.close_window_button:
-                            for sprite in self.sprites:  # при закрытии диалогового окна
-                                sprite.is_enabled = True  # разблокируем спрайты
-                            for button in self.buttons:
-                                button.is_enabled = True  # и изображения
+                            self.unblock_activity()  # при закрытии окна разблокируем активность
                 elif event.type == pygame.KEYDOWN:  # нажатие клавиши на клавиатуре
                     if event.key == pygame.K_ESCAPE:
                         if self.old_activity:
@@ -64,14 +49,7 @@ class BasicActivity:
                                 button.is_hovered = False  # периросовка кнопок
                             return self.old_activity.run()  # запуск предыдущей активности
                         else:
-                            self.termination_dialog = pygame_gui.windows.UIConfirmationDialog(
-                                rect=pygame.Rect(width // 2 - 150, height // 2 - 100, 300, 200),
-                                manager=self.manager,
-                                window_title='Подтверждение выхода',
-                                action_long_desc='Вы уверены, что хотите выйти?',
-                                action_short_name='OK',
-                                blocking=True)
-                            self.termination_dialog.close_window_button.set_text('x')
+                            self.get_termination_dialog()
                 elif event.type == pygame.MOUSEMOTION:  # движение мыши
                     self.mouse_motion(event)
                 elif event.type == pygame.MOUSEBUTTONDOWN:  # нажатие клавиши мыши
@@ -94,26 +72,26 @@ class BasicActivity:
             self.sprites.draw(screen)  # отрисовка всех спрайтов
 
     def load_ui(self, ui_element):
-        """Отрисовка всех 'элементов пользовательского интерфейса'"""
-        if ui_element == play_button:
+        """Cоздание всех элементов пользовательского интерфейса"""
+        if ui_element == play_button:  # кнопка Play
             ui_button = pygame_gui.elements.UIButton(
                 relative_rect=play_button,
                 manager=self.manager,
                 text='Play')
             self.ui_buttons.append(ui_button)
-        elif ui_element == exit_button:
+        elif ui_element == exit_button:  # кнопка Exit ['X']
             ui_button = pygame_gui.elements.UIButton(
                 relative_rect=exit_button,
                 manager=self.manager,
                 text='X')
             self.ui_buttons.append(ui_button)
-        elif ui_element == escape_button:
+        elif ui_element == escape_button:  # кнопка Escape [<-]
             ui_button = pygame_gui.elements.UIButton(
                 relative_rect=escape_button,
                 manager=self.manager,
                 text='<-')
             self.ui_buttons.append(ui_button)
-        elif ui_element == ok_button:
+        elif ui_element == ok_button:  # кнопка OK
             ui_button = pygame_gui.elements.UIButton(
                 relative_rect=ok_button,
                 manager=self.manager,
@@ -133,14 +111,12 @@ class BasicActivity:
         """Обработка нажатия клавиши мыши"""
         global FRACTION
         pygame.time.wait(100)
-        if view.rect == play_button:
+        if view.rect == play_button or view.rect == ok_button:
             self.next_activity.run()  # запуск следующей активности
         if view.rect == exit_button:
             self.old_activity.run()  # запуск предыдущей активности
         if view.rect == escape_button:
             self.previous_activity.run()  # запуск предыдущей активности
-        if view.rect == ok_button:
-            self.next_activity.run()
         if view == konohagakure:
             FRACTION = KONOHAGAKURE  # выбрана фракция Конохагакуре
             self.start_game_activity.run()  # запуск игровой активности
@@ -167,7 +143,7 @@ class BasicActivity:
 
     def load_cardlist(self, cards):
         """Загрузка списка карт"""
-        self.sprites.empty()
+        self.sprites.empty()  # очистка группы спрайтов
         self.sprites.add(playcards)  # добавление 1 кнопки (Игровые карты)
         self.sprites.add(bonuscards)  # добавление 2 кнопки (Бонусные карты)
         """Предварительная установка позиции всех карт для просмотра информации о них"""
@@ -191,28 +167,54 @@ class BasicActivity:
                     card.is_enabled = True
                     self.sprites.add(card)
 
+    def block_activity(self):
+        """Блокировка активости"""
+        for sprite in self.sprites:
+            sprite.is_enabled = False  # блокировка всех спрайтов
+        for button in self.buttons:
+            button.is_enabled = False  # и кнопок
+
+    def unblock_activity(self):
+        """Разблокировка активности"""
+        for sprite in self.sprites:
+            sprite.is_enabled = True  # разблокировка всех спрайтов
+        for button in self.buttons:
+            button.is_enabled = True  # и кнопок
+
+    def get_termination_dialog(self):
+        """Создание диалогового окна для подтверждения выхода из игры"""
+        self.termination_dialog = pygame_gui.windows.UIConfirmationDialog(
+            rect=pygame.Rect(width // 2 - 150, height // 2 - 100, 300, 200),  # размеры
+            manager=self.manager,  # менеджер
+            window_title='Подтверждение выхода',  # название
+            action_long_desc='Вы уверены, что хотите выйти?',  # основной тескт
+            action_short_name='OK',  # текст кнопки подтверждения
+            blocking=True  # блокировка всех ui-элементов
+        )
+        self.termination_dialog.close_window_button.set_text('x')
+
 
 class Fragment(BasicActivity):
-    """Класс фрагмента, наследуемый от стандартной активности
+    """Класс фрагмента, наследуемый от стандартной активности.
     Необходим для того, чтобы не прерывать текущую активность"""
 
     def __init__(self, f_type, background, buttons=[], sprites=[]):
         """Инициализация фрагмента"""
         super().__init__(background, buttons, sprites)
         self.f_type = f_type  # тип фрагмента
-        self.main_activity = None
+        self.main_activity = None  # родительская активность
         self.screen2 = pygame.Surface(screen.get_size())  # второй холст, копия основного
 
     def output(self):
         """Отрисовка второго холста поверх основного"""
         self.screen2.blit(self.background, (0, 0))
-        if self.f_type == 'rules':  # если это правила, то отрисовываем все правила
+        if self.f_type == 'rules':  # если это правила, то отрисовываем название фрагмента и фон
             title_rules = b_font.render('Правила', 1, pygame.Color('black'))
             title_rules_rect = title_rules.get_rect()
             title_rules_rect.centerx = pygame.Rect(0, 0, width, height).centerx
             self.screen2.blit(title_rules, (title_rules_rect.x, 45))
             screen.blit(self.screen2, (0, 0))
-        elif self.f_type == 'help':
+        elif self.f_type == 'help':  # если это справка, то рисуем название фрагмента и фон
             title_help = b_font.render('Справка', 1, pygame.Color('black'))
             title_help_rect = title_help.get_rect()
             title_help_rect.centerx = pygame.Rect(0, 0, width, height).centerx
@@ -222,27 +224,6 @@ class Fragment(BasicActivity):
             screen.blit(self.screen2, (0, 0))
         else:
             screen.blit(self.screen2, (0, 0))
-
-    def load_ui(self, ui_element):
-        """Отрисовка всех кнопок"""
-        if ui_element == ok_button:
-            ui_button = pygame_gui.elements.UIButton(
-                relative_rect=ok_button,
-                manager=self.manager,
-                text='OK')
-            self.ui_buttons.append(ui_button)
-        if ui_element == exit_button:
-            ui_button = pygame_gui.elements.UIButton(
-                relative_rect=exit_button,
-                manager=self.manager,
-                text='X')
-            self.ui_buttons.append(ui_button)
-        if ui_element == escape_button:
-            ui_button = pygame_gui.elements.UIButton(
-                relative_rect=escape_button,
-                manager=self.manager,
-                text='<-')
-            self.ui_buttons.append(ui_button)
 
     def mouse_click(self, view):
         """Обработка нажатия клавиши мыши"""
@@ -255,6 +236,8 @@ class Fragment(BasicActivity):
 
 
 class MenuFragment(Fragment):
+    """Класс Главного Меню в игре, также наследуемый от фрагмента,
+    Чтобы не прерывать игровой цикл"""
 
     def run(self, card=None):
         """Запуск основного цикла"""
@@ -262,19 +245,8 @@ class MenuFragment(Fragment):
             for event in pygame.event.get():  # pygame ждёт, чтобы пользователь что-то сделал
                 if event.type == pygame.QUIT:  # ты куда???... (выход при нажатии на системный крестик)
                     """Создание диалогового окна для подтверждения выхода из игры"""
-                    self.termination_dialog = pygame_gui.windows.UIConfirmationDialog(
-                        rect=pygame.Rect(width // 2 - 150, height // 2 - 100, 300, 200),  # размеры
-                        manager=self.manager,  # менеджер
-                        window_title='Подтверждение выхода',  # название
-                        action_long_desc='Вы уверены, что хотите выйти?',  # основной тескт
-                        action_short_name='OK',  # текст кнопки подтверждения
-                        blocking=True  # блокировка всех ui-элементов
-                    )
-                    self.termination_dialog.close_window_button.set_text('x')
-                    for sprite in self.sprites:
-                        sprite.is_enabled = False  # блокировка всех спрайтов
-                    for button in self.buttons:
-                        button.is_enabled = False  # и кнопок
+                    self.get_termination_dialog()
+                    self.block_activity()
                 elif event.type == pygame.USEREVENT:  # проверка событий, связанных с ui-элементами
                     if event.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:  # подтверждение
                         terminate()  # выход
@@ -287,10 +259,7 @@ class MenuFragment(Fragment):
                         if self.termination_dialog:
                             if event.ui_element == self.termination_dialog.cancel_button or \
                                     event.ui_element == self.termination_dialog.close_window_button:
-                                for sprite in self.sprites:  # при закрытии диалогового окна
-                                    sprite.is_enabled = True  # разблокируем спрайты
-                                for button in self.buttons:
-                                    button.is_enabled = True  # и изображения
+                                self.unblock_activity()
                 elif event.type == pygame.KEYDOWN:  # нажатие клавиши на клавиатуре
                     if event.key == pygame.K_ESCAPE:
                         if self.old_activity:
@@ -299,14 +268,7 @@ class MenuFragment(Fragment):
                                 button.is_hovered = False  # периросовка кнопок
                             return self.old_activity.run()  # запуск предыдущей активности
                         else:
-                            self.termination_dialog = pygame_gui.windows.UIConfirmationDialog(
-                                rect=pygame.Rect(width // 2 - 150, height // 2 - 100, 300, 200),
-                                manager=self.manager,
-                                window_title='Подтверждение выхода',
-                                action_long_desc='Вы уверены, что хотите выйти?',
-                                action_short_name='OK',
-                                blocking=True)
-                            self.termination_dialog.close_window_button.set_text('x')
+                            self.get_termination_dialog()
                 elif event.type == pygame.MOUSEMOTION:  # движение мыши
                     self.mouse_motion(event)
                 elif event.type == pygame.MOUSEBUTTONDOWN:  # нажатие клавиши мыши
@@ -323,7 +285,8 @@ class MenuFragment(Fragment):
             pygame.display.flip()  # смена кадров
 
     def output(self):
-        screen.blit(self.background, (0, 0))
+        """Отрисовка всех элементов"""
+        screen.blit(self.background, (0, 0))  # рисуем только фон
 
     def load_ui(self, ui_element):
         if ui_element == escape_button:
@@ -354,26 +317,14 @@ class MenuFragment(Fragment):
     def mouse_click(self, view):
         """Обработка нажатия клавиши мыши"""
         pygame.time.wait(100)
-        if view.rect == rules_button:
+        if view.rect == rules_button:  # при нажатиии на кнопку ПРАВИЛА, запускаем фрагмент с правилами
             self.main_activity.get_rules()
-        if view.rect == help_button:
+        if view.rect == help_button:  # при нажатии на кнопку ПОМОЩЬ, запускаем фрагмент со справкой
             self.main_activity.get_help(1)
-        if view.rect == terminate_button:
-            self.termination_dialog = pygame_gui.windows.UIConfirmationDialog(
-                rect=pygame.Rect(width // 2 - 150, height // 2 - 100, 300, 200),  # размеры
-                manager=self.manager,  # менеджер
-                window_title='Подтверждение выхода',  # название
-                action_long_desc='Вы уверены, что хотите выйти?',  # основной текст
-                action_short_name='OK',  # текст кнопки подтверждения
-                blocking=True  # блокировка всех ui-элементов
-            )
-            self.termination_dialog.close_window_button.set_text('x')
-            for sprite in self.sprites:
-                sprite.is_enabled = False  # блокировка всех спрайтов
-            for button in self.buttons:
-                button.is_enabled = False  # и кнопок
+        if view.rect == terminate_button:  # при нажатии на кнопку ВЫЙТИ
+            self.get_termination_dialog()  # создаем диалог с подтверждением выхода
+            self.block_activity()  # и блокируем фрагмент
         return
-
 
 class BattleFragment(Fragment):
     """Класс фрагмента, наследуемый от стандартной активности
