@@ -1,3 +1,4 @@
+import random
 from constants import *
 from activities import BattleFragment
 
@@ -16,20 +17,20 @@ class BattlePoint(pygame.sprite.Group):
         self.info_fragment = BattleFragment('battlepoint', battlepoint_back, b_points,
                                             self)  # информация о точке
 
-    def output(self):
+    def output(self, color):
         """Отрисовка боевой точки"""
         for point in self.points:  # отрисовка всех точкек
-            pygame.draw.rect(screen, pygame.Color('white'), point, 3)
+            pygame.draw.rect(screen, pygame.Color(color), point, 3)
         if self.type == 'Перевал Хорана':
             for i in range(2):
-                name = b_font2.render(self.title.split()[i], 1, pygame.Color('white'))
+                name = b_font2.render(self.title.split()[i], 1, pygame.Color(color))
                 name_coord = name.get_rect()
                 name_coord.center = self.view.center
                 name_coord.y = height // 2 - 25
                 name_coord.y += 22 * i
                 screen.blit(name, name_coord)
         else:
-            name = b_font4.render(self.title, 1, pygame.Color('white'))
+            name = b_font4.render(self.title, 1, pygame.Color(color))
             name_coord = name.get_rect()
             name_coord.center = self.view.center
             screen.blit(name, name_coord)  # вывод названия точки
@@ -94,10 +95,14 @@ class Deck(pygame.sprite.Group):
         self.step = 0  # ход
         self.hand = self.sprites()  # "рука"
         self.current = 0  # индекс текущей карты в "руке"
-        self.konoha_bonus_rect = konoha_bonus.get_rect()  # колода карт-бонусов Конохагакуре (размеры)
-        self.iva_bonus_rect = iva_bonus.get_rect()  # колода карт-бонусов Ивагакуре (размеры)
         self.state = True  # состояние игровой колоды
         self.is_moved = 0  # количество перемещённых карт (для 1 хода)
+        if self.fraction == KONOHAGAKURE:
+            self.bonus_deck = konoha_bonusdeck
+        else:
+            self.bonus_deck = iva_bonusdeck
+        self.konoha_bonus_rect = konoha_bonus.get_rect()  # колода карт-бонусов Конохагакуре (размеры)
+        self.iva_bonus_rect = iva_bonus.get_rect()  # колода карт-бонусов Ивагакуре (размеры)
 
     def load(self):
         """Загрузка изображений карт игровой колоды"""
@@ -112,12 +117,12 @@ class Deck(pygame.sprite.Group):
                 self.hand[i].rect = self.hand[i].image.get_rect()
                 self.hand[i].rect.center = pygame.Rect(126, 5, 229, 135).center
 
-    def output(self):
+    def output(self, color):
         """Отрисовка игровой колоды"""
         if self.fraction == self.main_fraction:
-            pygame.draw.rect(screen, pygame.Color('white'), (125, height - 140, 231, 135), 3)
-            pygame.draw.rect(screen, pygame.Color('white'), (width - 125, height - 140, 90, 135), 3)
-            pygame.draw.rect(screen, pygame.Color('white'), endstep_button1, 3)
+            pygame.draw.rect(screen, pygame.Color(color), (125, height - 140, 231, 135), 3)
+            pygame.draw.rect(screen, pygame.Color(color), (width - 125, height - 140, 90, 135), 3)
+            pygame.draw.rect(screen, pygame.Color(color), endstep_button1, 3)
             """Установка колоды бонусных карт"""
             if self.fraction == KONOHAGAKURE:
                 self.konoha_bonus_rect.center = bonus_button1.center
@@ -127,9 +132,9 @@ class Deck(pygame.sprite.Group):
                 self.iva_bonus_rect.center = bonus_button1.center
                 screen.blit(iva_bonus, self.iva_bonus_rect)
         else:
-            pygame.draw.rect(screen, pygame.Color('white'), (124, 5, 231, 135), 3)
-            pygame.draw.rect(screen, pygame.Color('white'), (35, 5, 90, 135), 3)
-            pygame.draw.rect(screen, pygame.Color('white'), endstep_button2, 3)
+            pygame.draw.rect(screen, pygame.Color(color), (124, 5, 231, 135), 3)
+            pygame.draw.rect(screen, pygame.Color(color), (35, 5, 90, 135), 3)
+            pygame.draw.rect(screen, pygame.Color(color), endstep_button2, 3)
             if self.fraction == KONOHAGAKURE:
                 self.konoha_bonus_rect.center = bonus_button2.center
                 screen.blit(konoha_bonus, self.konoha_bonus_rect)
@@ -214,3 +219,9 @@ class Deck(pygame.sprite.Group):
     def get_state(self):
         """Выдача состояния игровой колоды"""
         return self.state
+
+    def get_bonus(self):
+        card = random.choice(self.bonus_deck.sprites())
+        card.bonus()
+        self.bonus_deck.remove(card)
+        return card

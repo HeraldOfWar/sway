@@ -1,4 +1,5 @@
 import pygame_gui
+import numpy
 from system_func import terminate
 from constants import *
 
@@ -574,17 +575,16 @@ class BattleFragment(Fragment):
         for point in self.buttons:
             self.draw_points(point)
         if self.is_attack:
-            if self.current_card.is_alive:
-                if self.current_card.damage > self.card_is_attacked.resist:
-                    damage1 = b_font.render(f'-{self.current_card.damage - self.card_is_attacked.resist}',
-                                            1, pygame.Color('green'))
-                else:
-                    damage1 = b_font.render('0', 1, pygame.Color('green'))
-                dmg_coords1 = damage1.get_rect()
-                dmg_coords1.center = pygame.Rect(0, 0, width, height).center
-                dmg_coords1.right = self.card_is_attacked.rect.left - 10
-                self.screen2.blit(damage1, dmg_coords1)
+            if self.current_card.damage > self.card_is_attacked.resist:
+                damage1 = b_font.render(f'-{self.current_card.damage - self.card_is_attacked.resist}',
+                                        1, pygame.Color('red'))
             else:
+                damage1 = b_font.render('0', 1, pygame.Color('red'))
+            dmg_coords1 = damage1.get_rect()
+            dmg_coords1.center = pygame.Rect(0, 0, width, height).center
+            dmg_coords1.right = self.card_is_attacked.rect.left - 10
+            self.screen2.blit(damage1, dmg_coords1)
+            if not self.current_card.is_alive:
                 self.current_card.pieces.update()
                 self.current_card.pieces.draw(self.screen2)
             if self.card_is_attacked.is_alive:
@@ -871,6 +871,7 @@ class GameActivity(BasicActivity):
         self.move_confirm_dialog = None
         self.selection_list1, self.selection_list2 = None, None  # список действий для карты
         self.card_is_moving, self.battlepoint_is_getting = None, None  # передвигаемая карта и конечная точка
+        self.bonus_card = None
 
     def run(self):
         """Запуск игрового цикла"""
@@ -895,6 +896,7 @@ class GameActivity(BasicActivity):
                         if event.ui_element == self.termination_dialog:
                             terminate()
                         if event.ui_element == self.move_confirm_dialog:
+                            pygame.time.wait(100)
                             if self.card_is_moving.can_move() == 'step':
                                 self.exception_msg = pygame_gui.windows.UIMessageWindow(
                                     rect=pygame.Rect(width // 2 - 150, height // 2 - 100, 300, 200),
@@ -942,6 +944,7 @@ class GameActivity(BasicActivity):
                                         if self.card_is_moving in battlepoint:
                                             self.card_is_moving.move(battlepoint,
                                                                      self.battlepoint_is_getting)
+                                            break
                                 if self.card_is_moving in self.first_cards:
                                     if self.first_cards.step == 0:
                                         self.first_cards.is_moved += 1
@@ -1019,7 +1022,7 @@ class GameActivity(BasicActivity):
                                 card = self.first_cards.hand[self.first_cards.current]
                                 if card.rect.collidepoint(event.pos) and card.is_enabled:
                                     self.mouse_click(card)
-                        if self.second_cards.get_state():
+                        elif self.second_cards.get_state():
                             if self.second_cards.hand:
                                 card = self.second_cards.hand[self.second_cards.current]
                                 if card.rect.collidepoint(event.pos) and card.is_enabled:
@@ -1031,17 +1034,41 @@ class GameActivity(BasicActivity):
             self.manager.update(FPS)
             self.output()
             self.manager.draw_ui(screen)
+            clock.tick(FPS)
             pygame.display.flip()
 
     def output(self):
         """Отрисовка всех элементов"""
-        screen.blit(self.background, (0, 0))
-        self.first_cards.output()
-        self.second_cards.output()
-        for battlepoint in self.battlepoints:
-            battlepoint.output()
-        for button in self.buttons:
-            self.draw_button(button)
+        if self.mode != 'bonus_is_bought':
+            screen.blit(self.background, (0, 0))
+            self.first_cards.output('white')
+            self.second_cards.output('white')
+            for battlepoint in self.battlepoints:
+                battlepoint.output('white')
+            for button in self.buttons:
+                self.draw_button(button)
+        else:
+            background = pygame.surfarray.array3d(self.background)
+            src = numpy.array(background)
+            dest = numpy.zeros(background.shape)
+            dest[:] = 0, 0, 0
+            diff = (dest - src) * 0.65
+            background = src + diff.astype(numpy.uint)
+            background = pygame.surfarray.make_surface(background)
+            screen.blit(background, (0, 0))
+
+            self.first_cards.output('#a5a5a5')
+            self.second_cards.output('#a5a5a5')
+            for battlepoint in self.battlepoints:
+                battlepoint.output('#a5a5a5')
+            for button in self.buttons:
+                self.draw_button(button)
+            self.bonus_card.update()
+            if self.bonus_card.update() == 'ready':
+                pygame.time.wait(100)
+                self.get_card_info(self.bonus_card)
+                self.set_static_mode()
+            screen.blit(self.bonus_card.image, self.bonus_card.rect)
 
     def draw_button(self, button):
         """Отрисовка всех кнопок"""
@@ -1070,12 +1097,16 @@ class GameActivity(BasicActivity):
         if button == bonus_button1:
             if button.is_hovered:
                 color, is_size = 'red', 5
+            elif self.mode == 'bonus_is_bought':
+                color, is_size = '#a5a5a5', 3
             else:
                 color, is_size = 'white', 3
             pygame.draw.rect(screen, pygame.Color(color), bonus_button1, is_size)
         if button == bonus_button2:
             if button.is_hovered:
                 color, is_size = 'red', 5
+            elif self.mode == 'bonus_is_bought':
+                color, is_size = '#a5a5a5', 3
             else:
                 color, is_size = 'white', 3
             pygame.draw.rect(screen, pygame.Color(color), bonus_button2, is_size)
@@ -1187,9 +1218,7 @@ class GameActivity(BasicActivity):
                         self.second_cards.score += battlepoint.score
                 return
             elif view == bonus_button1:
-                if self.first_cards.score >= 15:  # если хватает ОЗ, покупаем бонусную карту
-                    self.first_cards.score -= 15
-                else:  # иначе выдаём ошибку
+                if self.first_cards.score < 25:
                     self.exception_msg = pygame_gui.windows.UIMessageWindow(
                         rect=pygame.Rect(width // 2 - 150, height // 2 - 100, 300, 200),
                         html_message='Недостаточно ОЗ для покупки бонусной карты!',
@@ -1200,10 +1229,24 @@ class GameActivity(BasicActivity):
                     self.exception_msg.dismiss_button.set_text('OK')
                     self.block_board()
                     return
-            elif view == bonus_button2:
-                if self.second_cards.score >= 15:
-                    self.second_cards.score -= 15
+                elif len(self.first_cards.bonus_deck) == 0:
+                    self.exception_msg = pygame_gui.windows.UIMessageWindow(
+                        rect=pygame.Rect(width // 2 - 150, height // 2 - 100, 300, 200),
+                        html_message='Бонусные карты закончились, дальше сам!',
+                        manager=self.manager,
+                        window_title='Ошибка'
+                    )
+                    self.exception_msg.close_window_button.set_text('X')
+                    self.exception_msg.dismiss_button.set_text('OK')
+                    self.block_board()
+                    return
                 else:
+                    self.first_cards.score -= 25
+                    self.bonus_card = self.first_cards.get_bonus()
+                    self.set_bonus_bought_mode()
+                    return
+            elif view == bonus_button2:
+                if self.second_cards.score < 25:
                     self.exception_msg = pygame_gui.windows.UIMessageWindow(
                         rect=pygame.Rect(width // 2 - 150, height // 2 - 100, 300, 200),
                         html_message='Недостаточно ОЗ для покупки бонусной карты!',
@@ -1213,6 +1256,22 @@ class GameActivity(BasicActivity):
                     self.exception_msg.close_window_button.set_text('X')
                     self.exception_msg.dismiss_button.set_text('OK')
                     self.block_board()
+                    return
+                elif len(self.second_cards.bonus_deck) == 0:
+                    self.exception_msg = pygame_gui.windows.UIMessageWindow(
+                        rect=pygame.Rect(width // 2 - 150, height // 2 - 100, 300, 200),
+                        html_message='Бонусные карты закончились, дальше сам!',
+                        manager=self.manager,
+                        window_title='Ошибка'
+                    )
+                    self.exception_msg.close_window_button.set_text('X')
+                    self.exception_msg.dismiss_button.set_text('OK')
+                    self.block_board()
+                    return
+                else:
+                    self.second_cards.score -= 25
+                    self.bonus_card = self.second_cards.get_bonus()
+                    self.set_bonus_bought_mode()
                     return
             for battlepoint in self.battlepoints:
                 if view == battlepoint.view and view.is_enabled:
@@ -1235,7 +1294,6 @@ class GameActivity(BasicActivity):
                     default_selection='–',
                     manager=self.manager)
                 self.block_board()
-            return
         elif self.mode == 'move':  # только в состоянии перемещения карты!
             for battlepoint in self.battlepoints:  # обязательно спросим у игрока, уверен ли он в своём выборе
                 if view == battlepoint.view and battlepoint.view.is_enabled:
@@ -1369,6 +1427,11 @@ class GameActivity(BasicActivity):
                 else:
                     button.is_enabled = False
             self.block_hand()
+
+    def set_bonus_bought_mode(self):
+        self.mode = 'bonus_is_bought'
+        self.bonus_card.rect.y = height
+        self.block_board()
 
     def block_board(self):
         """Блокировка игрового поля"""

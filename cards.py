@@ -116,10 +116,14 @@ class PlayCard(pygame.sprite.Sprite):
         if self.groups():
             if self.point != self.groups()[0]:
                 if self.fraction == self.groups()[0].main_fraction:
+                    if len(self.point.point1_cards) > 1 and self.synergy == 'Все':
+                        return damage + 1
                     for card in self.point.point1_cards:
                         if card.name.split()[0] in self.synergy:
                             return damage + 1
                 else:
+                    if len(self.point.point2_cards) > 1 and self.synergy == 'Все':
+                        return damage + 1
                     for card in self.point.point2_cards:
                         if card.name.split()[0] in self.synergy:
                             return damage + 1
@@ -177,7 +181,9 @@ class PlayCard(pygame.sprite.Sprite):
         damage = font.render(f'Урон: {self.set_damage()}', 1, pygame.Color('black'))
         damage_coord = damage.get_rect()
         damage_coord.center = pygame.Rect((8, 536, 232, 46)).center
-        if len(", ".join(self.synergy)) > 10:  # установка размера в зависимости от длины текста
+        if self.synergy == 'Все':
+            synergy = font.render(f'Синергия: {self.synergy}', 1, pygame.Color('black'))
+        elif len(", ".join(self.synergy)) > 10:  # установка размера в зависимости от длины текста
             synergy = font1.render(f'Синергия: {", ".join(self.synergy)}', 1, pygame.Color('black'))
         else:
             synergy = font.render(f'Синергия: {", ".join(self.synergy)}', 1, pygame.Color('black'))
@@ -262,9 +268,18 @@ class BonusCard(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.is_enabled = True
 
-    def update(self):
-        """Реализация эффекта карты"""
+    def bonus(self):
         pass
+
+    def update(self):
+        self.rect.centerx = screen.get_rect().centerx
+        if self.rect.centery != pygame.Rect((8, 160, 465, 247)).centery:
+            if (self.rect.centery - pygame.Rect((8, 160, 465, 247)).centery) // 10 < 1:
+                self.rect.centery = pygame.Rect((8, 160, 465, 247)).centery
+            self.rect.y -= (self.rect.centery - pygame.Rect((8, 160, 465, 247)).centery) // 10
+        else:
+            return 'ready'
+        return
 
     def get_info(self):
         """Выдача информации о карте"""
@@ -331,16 +346,14 @@ class Pashke(PlayCard):
 class Akemi(PlayCard):
 
     def get_passive(self):
-        if self.groups():
-            if self.point != self.groups()[0]:
-                if self.fraction == self.groups()[0].main_fraction:
-                    for card in self.point.point1_cards:
-                        if card.short_name == 'shu':
-                            return True
-                else:
-                    for card in self.point.point2_cards:
-                        if card.short_name == 'shu':
-                            return True
+        if self.fraction == self.groups()[0].main_fraction:
+            for card in self.point.point1_cards:
+                if card.short_name == 'shu' and len(self.point.point1_cards) == 2:
+                    return True
+        else:
+            for card in self.point.point2_cards:
+                if card.short_name == 'shu' and len(self.point.point2_cards) == 2:
+                    return True
         return False
 
 
@@ -428,51 +441,44 @@ class Teeru(PlayCard):
 
 """Классы бонусных карт Конохагакуре"""
 class BarKonoha(BonusCard):
-    def update(self, *args):
-        pass
 
+    def bonus(self):
+        for card in PLAYCARDS:
+            if card.fraction == KONOHAGAKURE:
+                card.synergy = 'Все'
 
 class Himera(BonusCard):
-    def update(self, *args):
-        pass
+    pass
 
 
 class Tsunami(BonusCard):
-    def update(self, *args):
-        pass
+    pass
 
 
 class KingOfMouse(BonusCard):
-    def update(self, *args):
-        pass
+    pass
 
 
 class Ren(BonusCard):
-    def update(self, *args):
-        pass
+    pass
 
 
 """Классы бонусных карт Ивагакуре"""
 class HymnIva(BonusCard):
-    def update(self, *args):
-        pass
+    pass
 
 
 class Turtle(BonusCard):
-    def update(self, *args):
-        pass
+    pass
 
 
 class Kin(BonusCard):
-    def update(self, *args):
-        pass
+    pass
 
 
 class TrueMedic(BonusCard):
-    def update(self, *args):
-        pass
+    pass
 
 
 class Ambitions(BonusCard):
-    def update(self, *args):
-        pass
+    pass
