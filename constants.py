@@ -34,7 +34,17 @@ k_battlefield = load_image(BACK_N_BUT, 'main_battlefield.jpg')  # игровое
 i_battlefield = pygame.transform.rotate(k_battlefield, 180)  # игровое поле при выборе Ивагакуре
 konoha_bonus = load_image(BACK_N_BUT, 'konoha_bonus.jpg')  # рубашка карт Конохагакуре
 iva_bonus = load_image(BACK_N_BUT, 'iva_bonus.jpg')  # рубашка карт Ивагакуре
-battlepoint_back = load_image(BACK_N_BUT, 'battlepoint.jpg')  # фон боевых точек
+
+"""Фоны для боевых точек"""
+img_konoha_pass1 = load_image(BACK_N_BUT, 'konoha_pass1.jpg')  # перевал 1 (Коноха)
+img_konoha_pass2 = load_image(BACK_N_BUT, 'konoha_pass2.jpg')  # перевал 2 (Коноха)
+img_konoha_pass3 = load_image(BACK_N_BUT, 'konoha_pass3.jpg')  # перевал 3 (Коноха)
+img_iva_pass1 = load_image(BACK_N_BUT, 'iva_pass1.jpg')  # перевал 1 (Ива)
+img_iva_pass2 = load_image(BACK_N_BUT, 'iva_pass2.jpg')  # перевал 2 (Ива)
+img_iva_pass3 = load_image(BACK_N_BUT, 'iva_pass3.jpg')  # перевал 3 (Ива)
+img_bridge1 = load_image(BACK_N_BUT, 'bridge1.jpg')  # мост 1
+img_bridge2 = load_image(BACK_N_BUT, 'bridge2.jpg')  # мост 2
+img_horanpass = load_image(BACK_N_BUT, 'horanpass.jpg')  # перевал Хорана
 
 """Группы спрайтов"""
 cf_sprites = pygame.sprite.Group()  # группа спрайтов при выборе фракции
@@ -52,10 +62,10 @@ play_button = Button((145, 630, 180, 100))  # кнопка "Играть" (->)
 exit_button = Button(width - 65, 15, 50, 50)  # кнопка "Выйти" ([х])
 escape_button = Button(15, 15, 80, 50)  # кнопка "Назад" (<-)
 ok_button = Button(165, height - 100, 150, 75)  # кнопка "ОК"
-rules_button = Button(width // 2 - 150, height // 2 - 160, 300, 100)
-help_button = Button(width // 2 - 150, height // 2 - 40, 300, 100)
-terminate_button = Button(width // 2 - 150, height // 2 + 80, 300, 100)
-menu_buttons = [escape_button, help_button, rules_button, terminate_button]
+rules_button = Button(width // 2 - 150, height // 2 - 160, 300, 100)  # кнопка "Правила"
+help_button = Button(width // 2 - 150, height // 2 - 40, 300, 100)  # кнопка "Помощь"
+terminate_button = Button(width // 2 - 150, height // 2 + 80, 300, 100)  # кнопка "Выйти"
+menu_buttons = [escape_button, help_button, rules_button, terminate_button]  # список кнопок для главного меню
 
 """Игровые кнопки"""
 endstep_button1 = Button(width - 125, height - 140, 90, 55)  # кнопка "Закончить ход" для первого игрока
@@ -66,19 +76,22 @@ leftslide1 = Button(135, height - 103, 45, 60)  # прокрутить коло�
 rightslide1 = Button(width - 179, height - 103, 45, 60)  # прокрутить колоду вправо (1 игрок)
 leftslide2 = Button(135, 43, 45, 60)  # прокрутить колоду влево (2 игрок)
 rightslide2 = Button(width - 179, 43, 45, 60)  # прокрутить колоду вправо (2 игрок)
-battle_ok = Button(width // 2 - 50, height // 2 + 35, 100, 50)
+battle_ok = Button(width // 2 - 50, height // 2 + 35, 100, 50)  # кнопка "ОК" для поединка
 
 """Кнопки для боевых точек"""
-b_pass1, b_pass2 = Button(30, height - 260, 120, 50), Button(180, height - 260, 120, 50)
-b_pass3, b_pass4 = Button(330, height - 260, 120, 50), Button(30, 210, 120, 50)
-b_pass5, b_pass6 = Button(180, 210, 120, 50), Button(330, 210, 120, 50)
-b_bridge1, b_bridge2 = Button(42, height / 2 - 20, 96, 40), Button(338, height / 2 - 20, 96, 40)
-b_horanpass = Button(width / 2 - 72, height / 2 - 30, 144, 60)
+b_pass1, b_pass2 = Button(30, height - 260, 120, 50), Button(180, height - 260, 120, 50)  # перевалы (1 и 2)
+b_pass3, b_pass4 = Button(330, height - 260, 120, 50), Button(30, 210, 120, 50)  # перевалы (3 и 4)
+b_pass5, b_pass6 = Button(180, 210, 120, 50), Button(330, 210, 120, 50)  # перевалы (5 и 6)
+b_bridge1, b_bridge2 = Button(42, height / 2 - 20, 96, 40), Button(338, height / 2 - 20, 96, 40)  # мосты
+b_horanpass = Button(width / 2 - 72, height / 2 - 30, 144, 60)  # перевал Хорана
 
+play_board = [[b_pass4, b_pass5, b_pass6],
+              [b_bridge1, b_horanpass, b_bridge2],
+              [b_pass1, b_pass2, b_pass3]]  # игровое поле
 game_buttons = [endstep_button1, endstep_button2, bonus_button1, bonus_button2, leftslide1, leftslide2,
                 rightslide1, rightslide2, b_pass1, b_pass2, b_pass3, b_bridge1, b_horanpass, b_bridge2,
                 b_pass4, b_pass5, b_pass6]  # список игровых кнопок
-b_battlepoints = game_buttons[8:]  # cписок кнопок на боевой точке
+b_battlepoints = game_buttons[8:]  # cписок кнопок боевых точек
 
 """Позиции на боевых точках"""
 point1, point2, point3 = Button(58, 562, 120, 175), Button(180, 562, 120, 175), Button(302, 562, 120, 175)

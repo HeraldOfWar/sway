@@ -31,6 +31,7 @@ def game_init():
             for j in range(3):  # вражеские позиции
                 battlefields[i].points.append(pygame.Rect(30 + 40 * j + 150 * (i % 3), 559, 40, 35))
             battlefields[i].update_points()
+            battlefields[i].info_fragment.background = load_image(BACK_N_BUT, f'konoha_pass{i + 1}.jpg')
         elif i > 5:
             battlefields[i].title = f'Перевал {i - 2}'
             battlefields[i].type = 'Перевал'
@@ -39,6 +40,7 @@ def game_init():
             for j in range(3):
                 battlefields[i].points.append(pygame.Rect(30 + 40 * j + 150 * (i % 3), 175, 40, 35))
             battlefields[i].update_points()
+            battlefields[i].info_fragment.background = load_image(BACK_N_BUT, f'iva_pass{i - 5}.jpg')
         elif i == 4:
             battlefields[i].title = 'Перевал Хорана'
             battlefields[i].type = 'Перевал Хорана'
@@ -47,6 +49,7 @@ def game_init():
             for j in range(3):
                 battlefields[i].points.append(pygame.Rect(168 + 48 * j, 362, 48, 35))
             battlefields[i].update_points()
+            battlefields[i].info_fragment.background = load_image(BACK_N_BUT, f'horanpass.jpg')
         else:
             battlefields[i].title = f'Мост {i % 3 // 2 + 1}'
             battlefields[i].type = 'Мост'
@@ -55,6 +58,7 @@ def game_init():
             for j in range(3):
                 battlefields[i].points.append(pygame.Rect(42 + 32 * j + 148 * (i % 3), 372, 32, 35))
             battlefields[i].update_points()
+            battlefields[i].info_fragment.background = load_image(BACK_N_BUT, f'bridge{i % 3 // 2 + 1}.jpg')
 
     """Создание всех карт"""
     """Игровые карты Конохагакуре"""
