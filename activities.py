@@ -17,7 +17,7 @@ class BasicActivity:
         self.previous_activity = None  # ещё одна предыдущая активность... (escape_button)
         self.next_activity = None  # следующая активность
         self.start_game_activity = None  # активность для запуска игры
-        self.manager = pygame_gui.UIManager(size, default_theme)  # менеджер для управления элементами
+        self.manager = pygame_gui.UIManager(size, sway_theme)  # менеджер для управления элементами
         # пользовательского интерфейса
         for button in self.buttons:
             self.load_ui(button)  # преобразование кнопок в ui-кнопки
@@ -213,6 +213,7 @@ class Fragment(BasicActivity):
         self.f_type = f_type  # тип фрагмента
         self.main_activity = None  # родительская активность
         self.screen2 = pygame.Surface(screen.get_size())  # второй холст, копия основного
+        self.load_rules(self.f_type)
 
     def output(self):
         """Отрисовка второго холста поверх основного"""
@@ -242,6 +243,29 @@ class Fragment(BasicActivity):
         if view.rect == ok_button and self.f_type == 'rules':
             self.next_activity.run()
         return
+
+    def load_rules(self, f_type):
+        if f_type == 'rules':
+            rules = pygame_gui.elements.UITextBox(
+                html_text=rules_txt,
+                relative_rect=pygame.Rect(15, 120, 450, 600),
+                manager=self.manager)
+        if f_type == 'rules1':
+            rules = pygame_gui.elements.UITextBox(
+                html_text=rules_txt,
+                relative_rect=pygame.Rect(15, 180, 450, 600),
+                manager=self.manager)
+        if f_type == 'help':
+            helps = pygame_gui.elements.UITextBox(
+                html_text=help_txt,
+                relative_rect=pygame.Rect(15, 120, 450, 600),
+                manager=self.manager)
+        if f_type == 'help1':
+            helps = pygame_gui.elements.UITextBox(
+                html_text=help_txt,
+                relative_rect=pygame.Rect(15, 180, 450, 600),
+                manager=self.manager)
+
 
 
 class MenuFragment(Fragment):
@@ -345,15 +369,16 @@ class BattleFragment(Fragment):
         self.screen2 = pygame.Surface(screen.get_size())  # второй холст, копия основного
         self.battlepoint = battlepoint  # боевая точка
         self.mode = 'static'  # состояние фрагмента
-        self.current_card, self.card_is_attacked, self.current_point = None, None, \
-                                                                       None  # выбранные карты и точки
-        self.selection_list, self.move_confirm_dialog,  self.attack_confirm_dialog = None, None, \
-                                                                                     None  # диалоговые окна
-        self.choose_enemy, self.is_attack = False, False  # режимы фрагмента
+        self.current_card, self.card_is_getting = None, None  # выбранные точки
+        self.current_point, self.is_attack = None, None  # выбранная точка и режим атаки
+        self.choose_enemy = None  # режим выбора карт
+        self.selection_list, self.confirm_dialog = None, None  # ui-элементы
+        self.healthbars = []
 
     def run(self):
         """Основной цикл"""
         self.battlepoint.set_get_info_mode()  # установка стандартного режима фрагмента боевой точки
+        self.load_healthbar()
         for card in self.battlepoint:
             if card.default_rect != card.rect:
                 card.default_rect = card.rect  # сохраняем позиции
@@ -365,39 +390,46 @@ class BattleFragment(Fragment):
                     self.set_static_mode()
                 elif event.type == pygame.USEREVENT:
                     if event.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
-                        if event.ui_element == self.move_confirm_dialog:  # при подтверждении возвращения
-                            self.set_static_mode()  # карты в деревню устанавливаем стандартный режим
-                            if self.main_activity.first_cards.get_state():
-                                """Перемещение карты"""
-                                self.current_card.move(self.battlepoint, self.main_activity.first_cards)
-                                self.main_activity.set_static_mode()
-                                return
-                            else:
-                                """Перемещение карты"""
-                                self.current_card.move(self.battlepoint, self.main_activity.second_cards)
-                                self.main_activity.set_static_mode()
-                                return
-                        if event.ui_element == self.attack_confirm_dialog:  # при подтверждении атаки
-                            # устанавливаем режим боя
-                            self.battlepoint.set_battle_mode(self.current_card, self.card_is_attacked)
-                            # устраиваем поединок между картами
-                            self.battlepoint.battle(self.current_card, self.card_is_attacked)
-                            self.load_ui(battle_ok)  # загружаем кнопку ОК
-                            self.is_attack, self.choose_enemy = True, False  # устанавливаем значения режимов
-                            self.current_card.is_attacked = True  # подтверждаем, что карта уже атаковала в
-                            # этом ходу
+                        if event.ui_element == self.confirm_dialog:  # при подтверждении возвращения
+                            if self.mode == 'static':
+                                self.set_static_mode()  # карты в деревню устанавливаем стандартный режим
+                                for healthbar in self.healthbars:
+                                    healthbar.kill()
+                                    self.healthbars.remove(healthbar)
+                                if self.main_activity.first_cards.get_state():
+                                    """Перемещение карты"""
+                                    self.current_card.move(self.battlepoint, self.main_activity.first_cards)
+                                    self.main_activity.set_static_mode()
+                                    return
+                                else:
+                                    """Перемещение карты"""
+                                    self.current_card.move(self.battlepoint, self.main_activity.second_cards)
+                                    self.main_activity.set_static_mode()
+                                    return
+                            if self.mode == 'attack':  # при подтверждении атаки устанавливаем режим боя
+                                self.battlepoint.set_battle_mode(self.current_card, self.card_is_getting)
+                                # устраиваем поединок между картами
+                                self.battlepoint.battle(self.current_card, self.card_is_getting)
+                                self.load_ui(battle_ok)  # загружаем кнопку ОК
+                                self.is_attack, self.choose_enemy = True, False  # устанавливаем значения
+                                # режимов
+                                self.current_card.is_attacked = True  # подтверждаем, что карта уже
+                                # атаковала в этом ходу
+                            if self.mode == 'heal':
+                                if self.card_is_getting.current_health == self.card_is_getting.health_capacity:
+                                    self.get_exception_message('Прямо сейчас союзник не нуждается в вашей '
+                                                               'помощи. Поищите кого-нибудь другого!')
+                                else:
+                                    self.current_card.heal(self.card_is_getting)
+                                    self.set_static_mode()
                     elif event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                         if event.ui_element.rect == battle_ok:  # при нажатии на кнопку ОК
                             event.ui_element.kill()  # удаляем элемент
                             self.ui_buttons.remove(event.ui_element)  # отовсюду
                             self.set_static_mode()  # возвращаем стандартное состояние
-                        if self.move_confirm_dialog:
-                            if event.ui_element == self.move_confirm_dialog.cancel_button or \
-                                    event.ui_element == self.move_confirm_dialog.close_window_button:
-                                self.set_static_mode()
-                        if self.attack_confirm_dialog:
-                            if event.ui_element == self.attack_confirm_dialog.close_window_button or \
-                                    event.ui_element == self.attack_confirm_dialog.cancel_button:
+                        if self.confirm_dialog:
+                            if event.ui_element == self.confirm_dialog.cancel_button or \
+                                    event.ui_element == self.confirm_dialog.close_window_button:
                                 self.set_static_mode()
                         if self.exception_msg:
                             if event.ui_element == self.exception_msg.close_window_button or \
@@ -421,10 +453,24 @@ class BattleFragment(Fragment):
                                 else:
                                     self.set_static_mode()
                                     self.set_attack_mode()  # установка состояние атаки
+                            elif event.text == 'Вылечить':
+                                if self.current_card.can_heal() == 'len_cards':  # если нет союзников
+                                    self.get_exception_message('Скорее возвращайся к союзников, здесь ты'
+                                                               ' бесполезен!')
+                                elif self.current_card.can_heal() == 'chakra':  # если нет чакры
+                                    self.get_exception_message('Силы вашего бойца на исходе, '
+                                                               'пора возвращаться в деревню!')
+                                elif self.current_card.can_heal() == 'is_healed':  # если карта уже
+                                    # лечила в этом ходу
+                                    self.get_exception_message('Боец, твоя чакра ещё не до конца восстановлена'
+                                                               ', так ты можешь сделать только хуже!')
+                                else:
+                                    self.set_static_mode()
+                                    self.set_heal_mode()  # установка состояние атаки
                             elif event.text == 'Переместить':  # переход в состояние перемещения карты
                                 self.main_activity.card_is_moving = self.current_card  # устанавливаем
                                 # перемещаемую карту
-                                if self.current_card.can_move() == 'step':  # если это первый ход
+                                if self.current_card.can_move() == 'step1':  # если это первый ход
                                     self.get_exception_message('В первом ходу нельзя дважды переместить'
                                                                ' одну карту!')
                                 elif self.current_card.can_move() == 'pace':  # если закончилась скорость
@@ -434,15 +480,19 @@ class BattleFragment(Fragment):
                                                                'В таком состоянии нам не выбраться!')
                                 else:
                                     """Установка режима перемещения, передача текущей боевой точки и карты"""
+                                    self.main_activity.set_static_mode()
                                     self.main_activity.set_move_mode(self.battlepoint)
                                     self.set_static_mode()
+                                    for healthbar in self.healthbars:
+                                        healthbar.kill()
+                                        self.healthbars.remove(healthbar)
                                     self.selection_list.kill()
                                     return
                             elif event.text == 'Информация':  # выдача информации о карте
                                 self.set_static_mode()
                                 self.main_activity.get_card_info(self.current_card)
                             elif event.text == 'Вернуться в деревню':  # перемещение карты в "руку"
-                                if self.current_card.can_move() == 'step':  # если это первый ход
+                                if self.current_card.can_move() == 'step1':  # если это первый ход
                                     self.get_exception_message('В первом ходу нельзя дважды переместить'
                                                                ' одну карту!')
                                 elif self.current_card.can_move() == 'pace':  # если закончилась скорость
@@ -452,16 +502,10 @@ class BattleFragment(Fragment):
                                                                'В таком состоянии нам не выбраться!')
                                 else:
                                     self.main_activity.card_is_moving = self.current_card
-                                    self.move_confirm_dialog = pygame_gui.windows.UIConfirmationDialog(
-                                        rect=pygame.Rect(width // 2 - 150, height // 2 - 100, 300, 200),
-                                        manager=self.manager,
-                                        window_title='Подтверждение хода',
-                                        action_long_desc=f'Вы уверены, что хотите переместить '
-                                                         f'{self.current_card.name} '
-                                                         f'в деревню (в "руку")?',
-                                        action_short_name='OK',
-                                        blocking=True)
-                                    self.move_confirm_dialog.close_window_button.set_text('X')
+                                    self.get_confirm_dialog('Подтверждение хода', f'Вы уверены, что хотите '
+                                                                                  f'переместить '
+                                                                                  f'{self.current_card.name} '
+                                                                                  f'в деревню (в "руку")?')
                                 self.block_battlepoint()
                             else:  # возвращаемся в обычное состояние
                                 self.set_static_mode()
@@ -469,10 +513,13 @@ class BattleFragment(Fragment):
                 elif event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_ESCAPE:  # при нажатии на кнопку ESCAPE возвращаемся
                         self.set_static_mode()  # обратно на игровое поле
-                        self.selection_list.kill()
+                        if self.selection_list:
+                            self.selection_list.kill()
                         self.main_activity.set_static_mode()
                         return
                     elif event.key == pygame.K_BACKSPACE:  # при нажатии на кнопку BACKSPACE
+                        if self.selection_list:
+                            self.selection_list.kill()
                         self.set_static_mode()  # возвращаем фрагмент в обычное состояние
                 elif event.type == pygame.MOUSEMOTION:
                     self.mouse_motion(event)
@@ -511,21 +558,21 @@ class BattleFragment(Fragment):
 
         if self.is_attack:  # после подтверждения атаки
             # вывод урона, полученного вражеской картой
-            if self.current_card.damage > self.card_is_attacked.resist:
-                damage1 = b_font.render(f'-{self.current_card.damage - self.card_is_attacked.resist}',
+            if self.current_card.damage > self.card_is_getting.resist:
+                damage1 = b_font.render(f'-{self.current_card.damage - self.card_is_getting.resist}',
                                         1, pygame.Color('green'))
             else:
                 damage1 = b_font.render('0', 1, pygame.Color('green'))
             dmg_coords1 = damage1.get_rect()
             dmg_coords1.center = pygame.Rect(0, 0, width, height).center
-            dmg_coords1.right = self.card_is_attacked.rect.left - 10
+            dmg_coords1.right = self.card_is_getting.rect.left - 10
             self.screen2.blit(damage1, dmg_coords1)
             if not self.current_card.is_alive:  # если текущая карта погибает
                 self.current_card.pieces.update()  # запускаем анимацию её уничтожения
                 self.current_card.pieces.draw(self.screen2)
-            if self.card_is_attacked.is_alive:  # вывод урона, полученного текущей картой
-                if self.card_is_attacked.damage > self.current_card.resist:
-                    damage2 = b_font.render(f'-{self.card_is_attacked.damage - self.current_card.resist}',
+            if self.card_is_getting.is_alive:  # вывод урона, полученного текущей картой
+                if self.card_is_getting.damage > self.current_card.resist:
+                    damage2 = b_font.render(f'-{self.card_is_getting.damage - self.current_card.resist}',
                                             1, pygame.Color('red'))
                 else:
                     damage2 = b_font.render('0', 1, pygame.Color('red'))
@@ -534,14 +581,24 @@ class BattleFragment(Fragment):
                 dmg_coords2.x = self.current_card.rect.right + 10
                 self.screen2.blit(damage2, dmg_coords2)
             else:  # если вражеская карта погибает, запускаем анимацию её уничтожения
-                self.card_is_attacked.pieces.update()
-                self.card_is_attacked.pieces.draw(self.screen2)
+                self.card_is_getting.pieces.update()
+                self.card_is_getting.pieces.draw(self.screen2)
 
         if self.choose_enemy:  # пока игрок выбирает цель для нападения
             if self.main_activity.first_cards.get_state():  # воспроизводим анимацию "тряски" вражеских карт
                 self.main_activity.second_cards.update()
             else:
                 self.main_activity.first_cards.update()
+
+        if self.mode == 'heal':
+            if self.main_activity.first_cards.get_state():  # воспроизводим анимацию "тряски" вражеских карт
+                for card in self.main_activity.first_cards:
+                    if card != self.current_card:
+                        card.update()
+            else:
+                for card in self.main_activity.second_cards:
+                    if card != self.current_card:
+                        card.update()
 
         screen.blit(self.screen2, (0, 0))  # отрисовка второго холста
         self.battlepoint.draw(screen)  # выдача информации о боевой точке
@@ -560,6 +617,24 @@ class BattleFragment(Fragment):
                 manager=self.manager,
                 text='OK')
             self.ui_buttons.append(ui_button)
+
+    def load_healthbar(self):
+        for i in range(len(self.battlepoint.first_points)):
+            if len(self.battlepoint.point1_cards) > i:
+                point = self.battlepoint.first_points[i]
+                healthbar = pygame_gui.elements.UIScreenSpaceHealthBar(
+                    relative_rect=pygame.Rect(point.centerx - 60, point.bottom + 5, 120, 30),
+                    manager=self.manager,
+                    sprite_to_monitor=self.battlepoint.point1_cards[i])
+                self.healthbars.append(healthbar)
+        for i in range(len(self.battlepoint.second_points)):
+            if len(self.battlepoint.point2_cards) > i:
+                point = self.battlepoint.second_points[i]
+                healthbar = pygame_gui.elements.UIScreenSpaceHealthBar(
+                    relative_rect=pygame.Rect(point.centerx - 60, point.top - 35, 120, 30),
+                    manager=self.manager,
+                    sprite_to_monitor=self.battlepoint.point2_cards[i])
+                self.healthbars.append(healthbar)
 
     def draw_points(self, point):
         """Отрисовка позиций на боевой точке"""
@@ -595,7 +670,12 @@ class BattleFragment(Fragment):
             """Вывод списка возможных действий при нажатии на карту"""
             if view in b_points[1:4] and \
                     len(self.battlepoint.point1_cards) > self.battlepoint.first_points.index(view):
-                item_list = ['–', 'Атаковать', 'Переместить', 'Информация']  # список действий
+                self.current_card = self.battlepoint.point1_cards[b_points[1:4].index(view)]
+                self.current_point = view
+                if self.current_card.spec != 'Медик':
+                    item_list = ['–', 'Атаковать', 'Переместить', 'Информация']  # список действий
+                else:
+                    item_list = ['–', 'Вылечить', 'Переместить', 'Информация']
                 if view == point3:
                     x = view.right - 245
                 else:
@@ -606,8 +686,6 @@ class BattleFragment(Fragment):
                     item_list=item_list,
                     default_selection='–',
                     manager=self.manager)
-                self.current_card = self.battlepoint.point1_cards[b_points[1:4].index(view)]
-                self.current_point = view
                 if self.battlepoint.view == b_pass1 or self.battlepoint.view == b_pass2 \
                         or self.battlepoint.view == b_pass3:  # если карта находится на перевале рядом с базой
                     item_list.append('Вернуться в деревню')  # добавляем действие "Вернуться в деревню"
@@ -618,7 +696,12 @@ class BattleFragment(Fragment):
                 self.block_battlepoint()
             if view in b_points[4:] and \
                     len(self.battlepoint.point2_cards) > self.battlepoint.second_points.index(view):
-                item_list = ['–', 'Атаковать', 'Переместить', 'Информация']
+                self.current_card = self.battlepoint.point2_cards[b_points[4:].index(view)]
+                self.current_point = view
+                if self.current_card.spec != 'Медик':
+                    item_list = ['–', 'Атаковать', 'Переместить', 'Информация']  # список действий
+                else:
+                    item_list = ['–', 'Вылечить', 'Переместить', 'Информация']
                 if view == point6:
                     x = view.right - 245
                 else:
@@ -628,13 +711,11 @@ class BattleFragment(Fragment):
                     item_list=item_list,
                     default_selection='–',
                     manager=self.manager)
-                self.current_card = self.battlepoint.point2_cards[b_points[4:].index(view)]
-                self.current_point = view
                 if self.battlepoint.view == b_pass4 or self.battlepoint.view == b_pass5 \
                         or self.battlepoint.view == b_pass6:
                     item_list.append('Вернуться в деревню')
                 if self.current_card.get_ability():
-                    item_list.append('Пассивная способность')
+                    item_list.append('Способность')
                 self.selection_list.set_item_list(item_list)
                 self.selection_list.set_default_selection()
                 self.block_battlepoint()
@@ -645,26 +726,35 @@ class BattleFragment(Fragment):
             elif view in self.buttons[1:]:  # выбор цели для нападения
                 if self.current_card in self.main_activity.first_cards:
                     i = self.battlepoint.second_points.index(view)
-                    self.card_is_attacked = self.battlepoint.point2_cards[i]
+                    self.card_is_getting = self.battlepoint.point2_cards[i]
                 else:
                     i = self.battlepoint.first_points.index(view)
-                    self.card_is_attacked = self.battlepoint.point1_cards[i]
+                    self.card_is_getting = self.battlepoint.point1_cards[i]
                 """Создание диалогового окна с подтверждением атаки"""
-                self.attack_confirm_dialog = pygame_gui.windows.UIConfirmationDialog(
-                    rect=pygame.Rect(width // 2 - 150, height // 2 - 100, 300, 200),
-                    manager=self.manager,
-                    window_title='Подтверждение хода',
-                    action_long_desc=f'Вы уверены, что хотите устроить сражение между {self.current_card}'
-                                     f' и {self.card_is_attacked}?',
-                    action_short_name='OK',
-                    blocking=True)
-                self.attack_confirm_dialog.close_window_button.set_text('X')
+                self.get_confirm_dialog('Подтверждение атаки', f'Вы уверены, что хотите устроить сражение '
+                                                               f'между {self.current_card} и'
+                                                               f' {self.card_is_getting}?')
+                self.block_battlepoint()
+        if self.mode == 'heal':
+            if view == self.current_point:  # при нажатии на текущую карту возвращаемся в обычное состояние
+                self.set_static_mode()
+                return
+            elif view in self.buttons[1:]:  # выбор цели для нападения
+                if self.current_card in self.main_activity.first_cards:
+                    i = self.battlepoint.first_points.index(view)
+                    self.card_is_getting = self.battlepoint.point1_cards[i]
+                else:
+                    i = self.battlepoint.second_points.index(view)
+                    self.card_is_getting = self.battlepoint.point2_cards[i]
+                """Создание диалогового окна с подтверждением атаки"""
+                self.get_confirm_dialog('Подтверждение действия', f'Вы уверены, что хотите вылечить'
+                                                                  f' {self.card_is_getting}?')
                 self.block_battlepoint()
 
     def set_static_mode(self):
         """Установка стандартного состояния фрагмента боевой точки"""
         self.mode = 'static'
-        self.is_attack, self.choose_enemy = False, False
+        self.is_attack, self.choose_enemy, self.choose_friend = False, False, False
         for button in self.buttons:
             button.is_hovered = False
             button.is_enabled = True
@@ -688,7 +778,7 @@ class BattleFragment(Fragment):
                     point.is_hovered = True  # подсвечиваeм текущую карту
                 else:
                     point.is_enabled = False  # и блокируем все остальные союзные
-            for i in range(len(self.battlepoint.second_points)): # подсвечиваем все вражеские карты
+            for i in range(len(self.battlepoint.second_points)):  # подсвечиваем все вражеские карты
                 if len(self.battlepoint.point2_cards) > i:
                     self.battlepoint.second_points[i].is_enabled = True
                     self.battlepoint.second_points[i].is_hovered = True
@@ -705,6 +795,22 @@ class BattleFragment(Fragment):
         for button in self.ui_buttons:
             button.is_enabled = False
 
+    def set_heal_mode(self):
+        self.mode = 'heal'
+        self.block_battlepoint()
+        if self.main_activity.first_cards.get_state():  # подсвечиваем союзные карты
+            for i in range(len(self.battlepoint.first_points)):
+                if self.battlepoint.first_points[i] != \
+                        self.battlepoint.point1_cards.index(self.current_card):
+                    self.battlepoint.first_points[i].is_enabled = True
+                    self.battlepoint.first_points[i].is_hovered = True
+        else:
+            for i in range(len(self.battlepoint.second_points)):
+                if self.battlepoint.second_points[i] != \
+                        self.battlepoint.point2_cards.index(self.current_card):
+                    self.battlepoint.second_points[i].is_enabled = True
+                    self.battlepoint.second_points[i].is_hovered = True
+
     def block_battlepoint(self):
         """Блокировка боевой точки"""
         for button in self.buttons:
@@ -713,6 +819,16 @@ class BattleFragment(Fragment):
             button.is_enabled = False
         for card in self.battlepoint:
             card.is_enabled = False
+
+    def get_confirm_dialog(self, title, message):
+        self.confirm_dialog = pygame_gui.windows.UIConfirmationDialog(
+            rect=pygame.Rect(width // 2 - 150, height // 2 - 100, 300, 200),
+            manager=self.manager,
+            window_title=title,
+            action_long_desc=message,
+            action_short_name='OK',
+            blocking=True)
+        self.confirm_dialog.close_window_button.set_text('X')
 
 
 class GameActivity(BasicActivity):
@@ -727,7 +843,7 @@ class GameActivity(BasicActivity):
         self.second_cards = self.decks[1]  # колода игровых карт вражеской фракции
         self.battlepoints = battlepoints  # список боевых точек
         self.mode = 'static'  # стандартное состояние игровой активности
-        self.move_confirm_dialog = None  # диалоговое окно подтверждения хода
+        self.confirm_dialog = None  # диалоговое окно подтверждения хода
         self.selection_list1, self.selection_list2 = None, None  # список действий для карты
         self.card_is_moving, self.battlepoint_is_getting = None, None  # передвигаемая карта и конечная точка
         self.bonus_card = None  # выпавшая бонусная карта
@@ -758,56 +874,64 @@ class GameActivity(BasicActivity):
                     self.get_main_menu()  # переход в главное меню
                 elif event.type == pygame.USEREVENT:
                     if event.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
-                        if event.ui_element == self.move_confirm_dialog:
-                            pygame.time.wait(100)
-                            if self.card_is_moving.can_move() == 'step':
-                                # при попытке переместить больше 3 карт в первом ходу
-                                self.get_exception_message('В первом ходу можно переместить только 3 карты!')
-                                self.block_board()
-                            elif self.card_is_moving.can_move(self.battlepoint_is_getting) == 'len_cards':
-                                # если на боевой точке уже находятся 3 союзные карты
-                                self.get_exception_message('Отправлять слишком много бойцов на одну точку'
-                                                           ' неразумно. Не забывайте: ваши ресурсы '
-                                                           'ограничены!')
-                                self.block_board()
-                            elif self.card_is_moving.can_move() == 'pace':
-                                # если закончилась скорость
-                                if self.card_is_moving.fraction == KONOHAGAKURE:  # для Конохагакуре
-                                    self.get_exception_message('Вашему бойцу нужно передохнуть... '
-                                                               'Сходите перекусить в Ичираку Рамен!')
-                                else:  # для Ивагакуре
-                                    self.get_exception_message('Вашему бойцу нужно передохнуть... Самое время'
-                                                               ' посетить монумент Кеико Гисе!')
-                                self.block_board()
+                        if event.ui_element == self.confirm_dialog:
+                            if self.mode == 'move':
+                                pygame.time.wait(100)
+                                if self.card_is_moving.can_move() == 'step':
+                                    # при попытке переместить больше 3 карт в первом ходу
+                                    self.get_exception_message('В первом ходу можно переместить только '
+                                                               '3 карты!')
+                                    self.block_board()
+                                elif self.card_is_moving.can_move(self.battlepoint_is_getting) == 'len_cards':
+                                    # если на боевой точке уже находятся 3 союзные карты
+                                    self.get_exception_message('Отправлять слишком много бойцов на одну точку'
+                                                               ' неразумно. Не забывайте: ваши ресурсы '
+                                                               'ограничены!')
+                                    self.block_board()
+                                elif self.card_is_moving.can_move() == 'pace':
+                                    # если закончилась скорость
+                                    if self.card_is_moving.fraction == KONOHAGAKURE:  # для Конохагакуре
+                                        self.get_exception_message('Вашему бойцу нужно передохнуть... '
+                                                                   'Сходите перекусить в Ичираку Рамен!')
+                                    else:  # для Ивагакуре
+                                        self.get_exception_message('Вашему бойцу нужно передохнуть... Самое '
+                                                                   'время посетить монумент Кеико Гисе!')
+                                    self.block_board()
+                                else:
+                                    """Перемещение карты"""
+                                    if self.card_is_moving in self.first_cards.hand:
+                                        self.card_is_moving.move(self.first_cards,
+                                                                 self.battlepoint_is_getting)
+                                    elif self.card_is_moving in self.second_cards.hand:
+                                        self.card_is_moving.move(self.second_cards,
+                                                                 self.battlepoint_is_getting)
+                                    else:
+                                        for battlepoint in self.battlepoints:
+                                            if self.card_is_moving in battlepoint:
+                                                self.card_is_moving.move(battlepoint,
+                                                                         self.battlepoint_is_getting)
+                                                break
+                                    if self.card_is_moving in self.first_cards:
+                                        if self.first_cards.step == 0:  # обновление числа карт,
+                                            self.first_cards.is_moved += 1  # перемещённых в первом ходу
+                                    else:
+                                        if self.second_cards.step == 0:
+                                            self.second_cards.is_moved += 1
+                                    self.set_static_mode()
                             else:
-                                """Перемещение карты"""
-                                if self.card_is_moving in self.first_cards.hand:
-                                    self.card_is_moving.move(self.first_cards,
-                                                             self.battlepoint_is_getting)
-                                elif self.card_is_moving in self.second_cards.hand:
-                                    self.card_is_moving.move(self.second_cards,
-                                                             self.battlepoint_is_getting)
+                                if self.first_cards.get_state():
+                                    self.bonus_card = self.first_cards.get_bonus()
                                 else:
-                                    for battlepoint in self.battlepoints:
-                                        if self.card_is_moving in battlepoint:
-                                            self.card_is_moving.move(battlepoint,
-                                                                     self.battlepoint_is_getting)
-                                            break
-                                if self.card_is_moving in self.first_cards:
-                                    if self.first_cards.step == 0:  # обновление количества карт, перемещённых
-                                        self.first_cards.is_moved += 1  # в первом ходу
-                                else:
-                                    if self.second_cards.step == 0:
-                                        self.second_cards.is_moved += 1
-                                self.set_static_mode()
-                            self.move_confirm_dialog = None
+                                    self.bonus_card = self.second_cards.get_bonus()
+                                self.set_bonus_bought_mode()
+                            self.confirm_dialog.kill()
                     elif event.user_type == pygame_gui.UI_BUTTON_PRESSED:
                         for button in self.ui_buttons:
                             if button == event.ui_element and button.is_enabled:
                                 self.mouse_click(button, True)
-                        if self.move_confirm_dialog:
-                            if event.ui_element == self.move_confirm_dialog.cancel_button or \
-                                    event.ui_element == self.move_confirm_dialog.close_window_button:
+                        if self.confirm_dialog:
+                            if event.ui_element == self.confirm_dialog.cancel_button or \
+                                    event.ui_element == self.confirm_dialog.close_window_button:
                                 self.set_static_mode()
                                 if self.card_is_moving in self.first_cards.hand:
                                     self.set_move_mode(self.first_cards)
@@ -817,7 +941,7 @@ class GameActivity(BasicActivity):
                                     for battlepoint in self.battlepoints:
                                         if self.card_is_moving in battlepoint:
                                             self.set_move_mode(battlepoint)
-                                self.move_confirm_dialog = None
+                                self.confirm_dialog.kill()
                         if self.exception_msg:
                             if event.ui_element == self.exception_msg.close_window_button or \
                                     event.ui_element == self.exception_msg.dismiss_button:
@@ -1068,59 +1192,31 @@ class GameActivity(BasicActivity):
                 return
             elif view == bonus_button1:
                 if self.first_cards.score < 25:
-                    self.exception_msg = pygame_gui.windows.UIMessageWindow(
-                        rect=pygame.Rect(width // 2 - 150, height // 2 - 100, 300, 200),
-                        html_message='Недостаточно ОЗ для покупки бонусной карты!',
-                        manager=self.manager,
-                        window_title='Ошибка'
-                    )
-                    self.exception_msg.close_window_button.set_text('X')
-                    self.exception_msg.dismiss_button.set_text('OK')
+                    self.get_exception_message('Недостаточно ОЗ для покупки бонусной карты!')
                     self.block_board()
                     return
                 elif len(self.first_cards.bonus_deck) == 0:
-                    self.exception_msg = pygame_gui.windows.UIMessageWindow(
-                        rect=pygame.Rect(width // 2 - 150, height // 2 - 100, 300, 200),
-                        html_message='Бонусные карты закончились, дальше сам!',
-                        manager=self.manager,
-                        window_title='Ошибка'
-                    )
-                    self.exception_msg.close_window_button.set_text('X')
-                    self.exception_msg.dismiss_button.set_text('OK')
+                    self.get_exception_message('Бонусные карты закончились, дальше сам!')
                     self.block_board()
                     return
                 else:
                     self.first_cards.score -= 25
-                    self.bonus_card = self.first_cards.get_bonus()
-                    self.set_bonus_bought_mode()
+                    self.get_confirm_dialog('Подтверждение покупки', 'Вы уверены, что хотите приобрести '
+                                                                     'бонусную карту?')
                     return
             elif view == bonus_button2:
                 if self.second_cards.score < 25:
-                    self.exception_msg = pygame_gui.windows.UIMessageWindow(
-                        rect=pygame.Rect(width // 2 - 150, height // 2 - 100, 300, 200),
-                        html_message='Недостаточно ОЗ для покупки бонусной карты!',
-                        manager=self.manager,
-                        window_title='Ошибка'
-                    )
-                    self.exception_msg.close_window_button.set_text('X')
-                    self.exception_msg.dismiss_button.set_text('OK')
+                    self.get_exception_message('Недостаточно ОЗ для покупки бонусной карты!')
                     self.block_board()
                     return
                 elif len(self.second_cards.bonus_deck) == 0:
-                    self.exception_msg = pygame_gui.windows.UIMessageWindow(
-                        rect=pygame.Rect(width // 2 - 150, height // 2 - 100, 300, 200),
-                        html_message='Бонусные карты закончились, дальше сам!',
-                        manager=self.manager,
-                        window_title='Ошибка'
-                    )
-                    self.exception_msg.close_window_button.set_text('X')
-                    self.exception_msg.dismiss_button.set_text('OK')
+                    self.get_exception_message('Бонусные карты закончились, дальше сам!')
                     self.block_board()
                     return
                 else:
                     self.second_cards.score -= 25
-                    self.bonus_card = self.second_cards.get_bonus()
-                    self.set_bonus_bought_mode()
+                    self.get_confirm_dialog('Подтверждение покупки', 'Вы уверены, что хотите приобрести '
+                                                                     'бонусную карту?')
                     return
             for battlepoint in self.battlepoints:
                 if view == battlepoint.view and view.is_enabled:
@@ -1154,15 +1250,9 @@ class GameActivity(BasicActivity):
             else:
                 for battlepoint in self.battlepoints:
                     if view == battlepoint.view and battlepoint.view.is_enabled:
-                        self.move_confirm_dialog = pygame_gui.windows.UIConfirmationDialog(
-                            rect=pygame.Rect(width // 2 - 150, height // 2 - 100, 300, 200),
-                            manager=self.manager,
-                            window_title='Подтверждение хода',
-                            action_long_desc=f'Вы уверены, что хотите переместить {self.card_is_moving.name} '
-                                             f'на {battlepoint.title}?',
-                            action_short_name='OK',
-                            blocking=True)
-                        self.move_confirm_dialog.close_window_button.set_text('X')
+                        self.get_confirm_dialog('Подтверждение хода', f'Вы уверены, что хотите переместить'
+                                                                      f' {self.card_is_moving.name} на'
+                                                                      f' {battlepoint.title}?')
                         self.battlepoint_is_getting = battlepoint
                         self.block_board()
                         return
@@ -1234,6 +1324,16 @@ class GameActivity(BasicActivity):
         self.mode = 'bonus_is_bought'
         self.bonus_card.rect.y = height  # установка карте позицию за пределами экрана для вылета
         self.block_board()
+
+    def get_confirm_dialog(self, title, message):
+        self.confirm_dialog = pygame_gui.windows.UIConfirmationDialog(
+            rect=pygame.Rect(width // 2 - 150, height // 2 - 100, 300, 200),
+            manager=self.manager,
+            window_title=title,
+            action_long_desc=message,
+            action_short_name='OK',
+            blocking=True)
+        self.confirm_dialog.close_window_button.set_text('X')
 
     def block_board(self):
         """Блокировка игрового поля"""

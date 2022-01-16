@@ -119,4 +119,14 @@ font, font1 = pygame.font.Font(MAIN_FONT, 14), pygame.font.Font(MAIN_FONT, 12)
 font2, font3 = pygame.font.Font(MAIN_FONT, 10), pygame.font.Font(MAIN_FONT, 8)
 
 """Инициализация тем"""
-default_theme = os.path.join(THEMES, 'default_theme.json')  # стандартная тема
+sway_theme = os.path.join(THEMES, 'sway_theme.json')  # стандартная тема
+
+"""Инициализация текстов"""
+rules_txt = ''  # правила
+with open(os.path.join('data', 'rules.txt'), encoding='utf8') as rules:
+    rules_txt = rules.read().split('\n')
+rules_txt = ' '.join(rules_txt)
+help_txt = ''  # справка
+with open(os.path.join('data', 'help.txt'), encoding='utf8') as helps:
+    help_txt = helps.read().split('\n')
+help_txt = ' '.join(help_txt)

@@ -19,7 +19,7 @@ class PlayCard(pygame.sprite.Sprite):
         self.pace = args[5]  # скорость
         self.chakra = args[6]  # запасы чакры (энергии)
         self.resist = args[7]  # стойкость (сопротивление)
-        self.health = args[8]  # здоровье
+        self.current_health = args[8]  # здоровье
         self.technic = args[9].split()  # техника (урон и вид)
         self.synergy = args[10].split()  # связь с другими картами (увеличивает урон)
         self.damage = self.pace + self.chakra + int(self.technic[0])
@@ -31,10 +31,10 @@ class PlayCard(pygame.sprite.Sprite):
                                             f'b_inf_{self.short_name}.jpg')  # изображение на боевой точке
         self.is_alive = True  # карта жива?
         self.is_enabled = True  # карта заблокирована?
-        self.is_attacked = False  # карта сражалась в этом ходу?
+        self.is_attacked, self.is_healed = False, False  # карта сражалась в этом ходу, лечила?
         self.passive_is_used = False  # карта использовала пассивную способность?
-        # стандартные значения показателей
-        self.default_pace, self.default_chakra, self.default_health = self.pace, self.chakra, self.health
+        self.default_pace, self.default_chakra = self.pace, self.chakra  # стандартные значения показателей
+        self.health_capacity = self.current_health
         self.default_rect = self.rect  # стандартное положение и размер
         self.point = self.groups()[0]  # местонахождение карты
         self.pieces = pygame.sprite.Group()  # "куски" карты (для уничтожения)
@@ -56,8 +56,36 @@ class PlayCard(pygame.sprite.Sprite):
     def attack(self, enemy):
         """Атака"""
         self.damage = self.set_damage()  # передаём урон
+        if self.technic[1] == 'Ниндзюцу' and enemy.technic[1] == 'Гендзюцу':
+            self.damage += 1
+        if self.technic[1] == 'Гендзюцу' and (enemy.technic[1] == 'Тайдзюцу' or
+                                              enemy.technic[1] == 'Кендзюцу'):
+            self.damage += 1
+        if (self.technic[1] == 'Тайдзюцу' or self.technic[1] == 'Кендзюцу') and \
+            enemy.technic[1] == 'Ниндзюцу':
+            self.damage += 1
         enemy.get_damage(self.damage)  # наносим урон противнику
         self.chakra -= 1  # тратим чакру
+
+    def can_heal(self):
+        if self.chakra == 0:  # если закончилась чакра
+            return 'chakra'
+        if self.is_healed:  # если карта уже принимала участие в поединке в этом ходу
+            return 'is_healed'
+        if self.fraction == self.groups()[0].main_fraction:  # если нет союзников
+            if len(self.point.point1_cards) == 1:
+                return 'len_cards'
+        else:
+            if len(self.point.point2_cards) == 1:
+                return 'len_cards'
+
+    def heal(self, friend):
+        if friend.current_health + int(self.technic[0]) > friend.health_capacity:
+            friend.current_health = friend.health_capacity
+        else:
+            friend.current_health += int(self.technic[0])
+        self.is_healed = True
+        self.chakra -= 1
 
     def can_move(self, new_point=None):
         "Проверка на возможность переместить карту"
@@ -71,6 +99,8 @@ class PlayCard(pygame.sprite.Sprite):
                 return 'pace1'
         if self.groups()[0].step == 0 and self.groups()[0].is_moved >= 3: # если в первом ходу уже перемещено
             return 'step'  # 3 карты
+        if self.groups()[0].step == 0:
+            return 'step1'
         if self.fraction == self.groups()[0].main_fraction and new_point:  # если на точке уже 3 союзных карты
             if len(new_point.point1_cards) == 3:
                 return 'len_cards'
@@ -116,8 +146,8 @@ class PlayCard(pygame.sprite.Sprite):
 
     def recover(self):
         """Восстановление карты"""
-        if self.health < self.default_health:
-            self.health += 1  # восстановление здоровья
+        if self.current_health < self.health_capacity:
+            self.current_health += 1  # восстановление здоровья
         if self.chakra < self.default_chakra:
             self.chakra += 1  # восстановление чакры
 
@@ -127,7 +157,10 @@ class PlayCard(pygame.sprite.Sprite):
 
     def set_damage(self):
         """Установка урона"""
-        damage = self.pace + self.chakra + int(self.technic[0]) # урон складывается из 3 показателей
+        if self.spec != 'Медик':
+            damage = self.pace + self.chakra + int(self.technic[0]) # урон складывается из 3 показателей
+        else:
+            damage = self.pace + self.chakra  # но не у медиков
         if self.groups():
             if self.point != self.groups()[0]:  # если срабатывает синергия
                 if self.fraction == self.groups()[0].main_fraction:
@@ -146,7 +179,7 @@ class PlayCard(pygame.sprite.Sprite):
 
     def get_damage(self, damage):
         """Получение урона"""
-        if self.health + self.resist <= damage:  # если урон больше чем здоровье + стойкость
+        if self.current_health + self.resist <= damage:  # если урон больше чем здоровье + стойкость
             self.is_alive = False  # карта погибает
             if self.fraction == self.groups()[0].main_fraction:  # отосвюду удаляется
                 self.point.point1_cards.remove(self)
@@ -156,7 +189,7 @@ class PlayCard(pygame.sprite.Sprite):
             self.death()  # а также срабатывает анимация уничтожения
         else:
             if self.resist <= damage:  # если стойкость меньше урона
-                self.health -= damage - self.resist  # наносим урон карте
+                self.current_health -= damage - self.resist  # наносим урон карте
 
     def get_ability(self):
         """Проверка наличия способности карты"""
@@ -192,7 +225,7 @@ class PlayCard(pygame.sprite.Sprite):
         resist = font.render(f'Стойкость: {self.resist}', 1, pygame.Color('black'))
         resist_coord = resist.get_rect()
         resist_coord.center = pygame.Rect((8, 492, 232, 47)).center
-        health = font.render(f'Здоровье: {self.health}', 1, pygame.Color('black'))
+        health = font.render(f'Здоровье: {self.current_health}', 1, pygame.Color('black'))
         health_coord = health.get_rect()
         health_coord.center = pygame.Rect(238, 492, 233, 47).center
         damage = font.render(f'Урон: {self.set_damage()}', 1, pygame.Color('black'))
@@ -493,13 +526,7 @@ class Himera(BonusCard):
 
 
 class Tsunami(BonusCard):
-
-    def bonus(self):
-        for card in PLAYCARDS:
-            if card.short_name == 'akemi':
-                card.passive_is_used = True
-            if card.short_name == 'kentaru':
-                card.get_damage(100)
+    pass
 
 
 class KingOfMouse(BonusCard):
