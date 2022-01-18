@@ -1,6 +1,4 @@
-import pygame
 import random
-from system_func import load_image
 from constants import *
 
 
@@ -33,7 +31,7 @@ class PlayCard(pygame.sprite.Sprite):
         self.is_alive = True  # карта жива?
         self.is_enabled = True  # карта заблокирована?
         self.is_attacked, self.is_healed = False, False  # карта сражалась в этом ходу, лечила кого-нибудь?
-        self.passive_is_used = False  # карта использовала пассивную способность?
+        self.passive_is_used, self.passive_is_active = False, False  # карта использовала пассивную способность?
         self.default_pace, self.default_chakra = self.pace, self.chakra  # стандартные значения показателей
         self.health_capacity = self.current_health
         self.default_rect = self.rect  # стандартное положение и размер
@@ -685,9 +683,17 @@ class Jerry(PlayCard):
 class Keiko(PlayCard):
 
     def get_ability(self):
-        return True
+        if not self.is_attacked:
+            if self.fraction == self.groups()[0].main_fraction:
+                if len(self.point.point2_cards) > 0:
+                    return True
+            else:
+                if len(self.point.point1_cards) > 0:
+                    return True
+        return False
 
     def ability(self):
+        self.point.info_fragment.set_static_mode()
         self.passive_is_used = True
         self.point.info_fragment.set_attack_mode()
 
@@ -729,11 +735,13 @@ class Akito(PlayCard):
         return False
 
     def ability(self):
-        self.passive_is_used = True
+        self.point.info_fragment.set_static_mode()
+        self.passive_is_active = True
         self.point.info_fragment.set_heal_mode()
 
     def heal(self, friend):
-        if self.passive_is_used:
+        if self.passive_is_active:
+            self.passive_is_used = True
             friend.pace += 2
             self.point.info_fragment.close()
             self.point.info_fragment.main_activity.card_is_moving = friend
@@ -747,6 +755,7 @@ class Akito(PlayCard):
                 friend.current_health += int(self.technic[0])
             self.is_healed = True
             self.chakra -= 1
+
 
 class Ryu(PlayCard):
 

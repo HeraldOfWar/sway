@@ -1,6 +1,5 @@
 import pygame_gui
 import numpy
-from cards import KickedCard
 from system_func import terminate
 from constants import *
 
@@ -419,7 +418,7 @@ class BattleFragment(Fragment):
                                     self.card_is_getting.kicked.sprites()[0].direction = 'left'
                             if self.mode == 'heal':
                                 if self.current_card.short_name == 'akito' and \
-                                        self.current_card.passive_is_used:
+                                        self.current_card.passive_is_active:
                                     self.current_card.heal(self.card_is_getting)
                                     self.set_static_mode()
                                 elif self.card_is_getting.current_health == \
@@ -525,6 +524,7 @@ class BattleFragment(Fragment):
                                 self.block_battlepoint()
 
                             elif event.text == 'Способность':
+                                self.current_card.passive_is_active = True
                                 if self.current_card.short_name == 'akemi' or\
                                         self.current_card.short_name == 'hiruko':
                                     self.set_use_ability_mode()
@@ -589,12 +589,12 @@ class BattleFragment(Fragment):
                 self.main_activity.first_cards.update()
 
         if self.mode == 'heal':
-            if self.main_activity.first_cards.get_state():  # воспроизводим анимацию "тряски" вражеских карт
-                for card in self.main_activity.first_cards:
+            if self.main_activity.first_cards.get_state():  # воспроизводим анимацию "тряски" союзных карт
+                for card in self.battlepoint.point1_cards:
                     if card != self.current_card:
                         card.update()
             else:
-                for card in self.main_activity.second_cards:
+                for card in self.battlepoint.point2_cards:
                     if card != self.current_card:
                         card.update()
 
@@ -786,7 +786,7 @@ class BattleFragment(Fragment):
                     i = self.battlepoint.second_points.index(view)
                     self.card_is_getting = self.battlepoint.point2_cards[i]
                 if self.current_card.short_name == 'akito' and \
-                        self.current_card.passive_is_used:
+                        self.current_card.passive_is_active:
                     self.get_confirm_dialog('Подтверждение действия', f'Вы уверены, что хотите переместить'
                                                                       f' {self.card_is_getting}?')
                 else:
@@ -807,6 +807,9 @@ class BattleFragment(Fragment):
             button.is_enabled = True
         for card in self.battlepoint:
             card.is_enabled = True
+            card.passive_is_active = False
+            if card.short_name == 'keiko':
+                card.passive_is_used = False
         for button in self.ui_buttons:
             button.is_enabled = True
         if self.main_activity.first_cards.get_state():
@@ -844,19 +847,29 @@ class BattleFragment(Fragment):
 
     def set_heal_mode(self):
         self.mode = 'heal'
-        self.block_battlepoint()
-        if self.main_activity.first_cards.get_state():  # подсвечиваем союзные карты
-            for i in range(len(self.battlepoint.first_points)):
-                if self.battlepoint.first_points[i] != \
-                        self.battlepoint.point1_cards.index(self.current_card):
+        self.choose_enemy = True
+        if self.current_card in self.main_activity.first_cards:
+            for point in self.battlepoint.first_points:
+                if point == self.current_point:
+                    point.is_hovered = True  # подсвечиваeм текущую карту
+                else:
+                    point.is_enabled = False  # и блокируем все остальные союзные
+            for i in range(len(self.battlepoint.first_cards)):  # подсвечиваем все вражеские карты
+                if len(self.battlepoint.point1_cards) > i:
                     self.battlepoint.first_points[i].is_enabled = True
                     self.battlepoint.first_points[i].is_hovered = True
-        else:
+        if self.current_card in self.main_activity.second_cards:
+            for point in self.battlepoint.second_points:
+                if point == self.current_point:
+                    point.is_hovered = True
+                else:
+                    point.is_enabled = False
             for i in range(len(self.battlepoint.second_points)):
-                if self.battlepoint.second_points[i] != \
-                        self.battlepoint.point2_cards.index(self.current_card):
+                if len(self.battlepoint.point2_cards) > i:
                     self.battlepoint.second_points[i].is_enabled = True
                     self.battlepoint.second_points[i].is_hovered = True
+        for button in self.ui_buttons:
+            button.is_enabled = False
 
     def set_use_ability_mode(self):
         self.mode = 'ability'

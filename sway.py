@@ -1,6 +1,3 @@
-import sqlite3
-
-import pygame
 import cards
 from activities import BasicActivity, GameActivity, Fragment, MenuFragment
 from board import BattlePoint, Deck
