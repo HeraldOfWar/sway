@@ -179,6 +179,7 @@ class Deck(pygame.sprite.Group):
     def add_card(self, cards):
         """Добавление карт в руку"""
         for card in cards:
+            card.point = self
             self.hand.insert(self.current, card)
 
     def set_state(self, state):

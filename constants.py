@@ -108,7 +108,7 @@ BONUSCARDS_DATA = cursor.execute("""SELECT id, fraction, name, short_name
                                     FROM bonuscards""")  # данные о бонусных картах
 BONUSCARDS_DATA = [list(i) for i in BONUSCARDS_DATA]
 connect.close()
-PLAYCARDS, BONUSCARDS, P_SECOND_INFO, B_SECOND_INFO = [], [], [], []
+PLAYCARDS, BONUSCARDS, OTHER_PCARDS, OTHER_BCARDS, P_SECOND_INFO, B_SECOND_INFO = [], [], [], [], [], []
 
 """Инициализация шрифтов"""
 pygame.font.init()

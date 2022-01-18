@@ -1,3 +1,5 @@
+import sqlite3
+
 import pygame
 import cards
 from activities import BasicActivity, GameActivity, Fragment, MenuFragment
@@ -91,6 +93,16 @@ def game_init():
     true_medic = cards.TrueMedic(f'{BONUSCARDS_DATA[8][3]}.jpg', BONUSCARDS_DATA[8], iva_bonusdeck)
     ambitions = cards.Ambitions(f'{BONUSCARDS_DATA[9][3]}.jpg', BONUSCARDS_DATA[9], iva_bonusdeck)
 
+    """Дополнительные карты"""
+    iketani = cards.Iketani(f'{PLAYCARDS_DATA[12][3]}.jpg', PLAYCARDS_DATA[12])
+    jerry = cards.Jerry(f'{PLAYCARDS_DATA[13][3]}.jpg', PLAYCARDS_DATA[13])
+    kubi = cards.PlayCard(f'{PLAYCARDS_DATA[14][3]}.jpg', PLAYCARDS_DATA[14])
+    vashte = cards.PlayCard(f'{PLAYCARDS_DATA[15][3]}.jpg', PLAYCARDS_DATA[15])
+    clone = cards.PlayCard(f'{PLAYCARDS_DATA[16][3]}.jpg', PLAYCARDS_DATA[16])
+    i_leave = cards.BonusCard(f'{BONUSCARDS_DATA[10][3]}.jpg', BONUSCARDS_DATA[10])
+    other_pcards = [iketani, jerry, kubi, vashte, clone]
+    other_bcards = [i_leave]
+
     """Создание всех окон (активностей и фрагментов)"""
     rules = Fragment('rules', rules_back, buttons=[ok_button])
     cf_activity = BasicActivity(cf_back, sprites=cf_sprites, old_activity=rules)
@@ -119,7 +131,6 @@ def game_init():
     for fragment in fragments:
         fragment.main_activity = game_activity
 
-
     """Инициализация спрайтов в окне выбора фракции"""
     konohagakure.image, ivagakure.image = load_image(BACK_N_BUT, 'konoha_background.jpg'), \
                                           load_image(BACK_N_BUT, 'iva_background.jpg')
@@ -147,26 +158,43 @@ def game_init():
         PLAYCARDS.append(card)
     for card in iva_deck:
         PLAYCARDS.append(card)
+    for card in other_pcards:
+        OTHER_PCARDS.append(card)
 
     """Заполнение списка бонусных карт"""
     for card in konoha_bonusdeck:
         BONUSCARDS.append(card)
     for card in iva_bonusdeck:
         BONUSCARDS.append(card)
+    for card in other_bcards:
+        OTHER_BCARDS.append(card)
 
+
+    connect = sqlite3.connect(DATABASE)
+    cursor = connect.cursor()
     """Заполнение списка описаний техник и способностей игровых карт"""
     for card in PLAYCARDS:
-        second_info = sqlite3.connect(DATABASE).cursor().execute(f"""SELECT technic_info, passive_ability_info 
-                                                                    FROM playcards
-                                                                    WHERE id = '{card.id}'""")
+        second_info = cursor.execute(f"""SELECT technic_info, passive_ability_info FROM playcards
+                                        WHERE id = '{card.id}'""")
         second_info = [list(i) for i in second_info]
         P_SECOND_INFO.append(second_info)
     """Заполнение списка эффектов бонусных карт"""
     for card in BONUSCARDS:
-        second_info = sqlite3.connect(DATABASE).cursor().execute(f"""SELECT ability_info FROM bonuscards
-                                                                     WHERE id = '{card.id}'""")
+        second_info = cursor.execute(f"""SELECT ability_info FROM bonuscards WHERE id = '{card.id}'""")
         second_info = [list(i) for i in second_info]
         B_SECOND_INFO.append(second_info)
+    """Заполнение списка описаний техник и способностей дополнительных игровых карт"""
+    for card in OTHER_PCARDS:
+        second_info = cursor.execute(f"""SELECT technic_info, passive_ability_info FROM playcards
+                                        WHERE id = '{card.id}'""")
+        second_info = [list(i) for i in second_info]
+        P_SECOND_INFO.append(second_info)
+    """Заполнение списка эффектов дополнительных бонусных карт"""
+    for card in OTHER_BCARDS:
+        second_info = cursor.execute(f"""SELECT ability_info FROM bonuscards WHERE id = '{card.id}'""")
+        second_info = [list(i) for i in second_info]
+        B_SECOND_INFO.append(second_info)
+    connect.close()
 
 
 def main():
