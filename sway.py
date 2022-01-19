@@ -161,10 +161,13 @@ def game_init():
     """Заполнение списка бонусных карт"""
     for card in konoha_bonusdeck:
         BONUSCARDS.append(card)
+        card.main_activity = game_activity
     for card in iva_bonusdeck:
         BONUSCARDS.append(card)
+        card.main_activity = game_activity
     for card in other_bcards:
         OTHER_BCARDS.append(card)
+        card.main_activity = game_activity
 
 
     connect = sqlite3.connect(DATABASE)

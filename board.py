@@ -16,6 +16,7 @@ class BattlePoint(pygame.sprite.Group):
         self.point1_cards, self.point2_cards = [], []  # список союзных и вражеских карт на точке
         self.info_fragment = BattleFragment('battlepoint', basic_back, b_points,
                                             self)  # фрагмент с информацией о точке
+        self.is_under = None
 
     def output(self, color):
         """Отрисовка боевой точки"""

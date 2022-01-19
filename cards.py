@@ -65,7 +65,7 @@ class PlayCard(pygame.sprite.Sprite):
         if (self.technic[1] == 'Тайдзюцу' or self.technic[1] == 'Кендзюцу') and \
                 enemy.technic[1] == 'Ниндзюцу':
             self.damage += 1
-        enemy.get_damage(self.damage)  # наносим урон противнику
+        enemy.get_damage(self.damage, self)  # наносим урон противнику
         if self.chakra != 0:
             self.chakra -= 1  # тратим чакру
 
@@ -170,19 +170,31 @@ class PlayCard(pygame.sprite.Sprite):
             if self.point != self.groups()[0]:  # если срабатывает синергия
                 if self.fraction == self.groups()[0].main_fraction:
                     if len(self.point.point1_cards) > 1 and self.synergy == 'Все':
-                        return damage + 1  # добавляем 1 к урону
+                        damage += 1  # добавляем 1 к урону
                     for card in self.point.point1_cards:
                         if card.name.split()[0] in self.synergy:
-                            return damage + 1
+                            damage += 1
+                    for card in self.point.point1_cards:
+                        if card.short_name == 'benkei':
+                            return damage - 2
+                        if card.short_name == 'hiruko' and card.himera_is_used:
+                            if card.himera_card.short_name == 'benkei':
+                                return damage - 2
                 else:
                     if len(self.point.point2_cards) > 1 and self.synergy == 'Все':
-                        return damage + 1
+                        damage += 1
                     for card in self.point.point2_cards:
                         if card.name.split()[0] in self.synergy:
-                            return damage + 1
+                            damage += 1
+                    for card in self.point.point2_cards:
+                        if card.short_name == 'benkei':
+                            return damage - 2
+                        if card.short_name == 'hiruko' and card.himera_is_used:
+                            if card.himera_card.short_name == 'benkei':
+                                return damage - 2
         return damage  # возвращаем урон
 
-    def get_damage(self, damage):
+    def get_damage(self, damage, *enemy):
         """Получение урона"""
         if self.is_alive:
             if damage >= self.resist:
@@ -342,6 +354,7 @@ class BonusCard(pygame.sprite.Sprite):
         self.short_name = args[3]
         self.rect = self.image.get_rect()
         self.is_enabled = True
+        self.main_activity = None
 
     def bonus(self):
         """Активация эффекта бонусной карты"""
@@ -436,10 +449,33 @@ class CardPiece(pygame.sprite.Sprite):
             self.kill()  # как только осколок вылетает за пределы экрана, он уничтожается
 
 
+class Kamikaze(pygame.sprite.Sprite):
+
+    def __init__(self, point, *group):
+        super().__init__(group)
+        self.image = load_image(CARDS, 'kamikaze.jpg')
+        self.boom_image = load_image(BACK_N_BUT, 'boom.png')
+        self.rect = self.image.get_rect()
+        self.point = point
+        self.rect.right = 0
+        self.rect.centery = self.point.centery
+        print(self.point)
+
+    def update(self):
+        if self.rect.centerx != self.point.centerx:
+            if (self.point.centerx - self.rect.centerx) // 100 < 1:
+                self.rect.centerx = self.point.centerx
+            self.rect.x += (self.point.centerx - self.rect.centerx) // 100
+        else:
+            self.image = self.boom_image
+            return 'ready'
+        return
+
+
 """Классы игровых карт Конохагакуре"""
 class Shu(PlayCard):
 
-    def get_damage(self, damage):
+    def get_damage(self, damage, *enemy):
         """Получение урона"""
         self.passive_is_used = random.randint(0, 1)
         if self.passive_is_used:
@@ -465,7 +501,7 @@ class Shu(PlayCard):
 
 class Pashke(PlayCard):
 
-    def get_damage(self, damage):
+    def get_damage(self, damage, *enemy):
         """Получение урона"""
         if damage >= self.resist:
             self.is_damaged = damage - self.resist
@@ -516,17 +552,17 @@ class Akemi(PlayCard):
         if (self.technic[1] == 'Тайдзюцу' or self.technic[1] == 'Кендзюцу') and \
                 enemy.technic[1] == 'Ниндзюцу':
             self.damage += 1
-        enemy.get_damage(self.damage)  # наносим урон противнику
+        enemy.get_damage(self.damage, self)  # наносим урон противнику
         if self.fraction == self.groups()[0].main_fraction:
             for card in self.point.point2_cards:
                 if card != enemy:
                     self.enemies.append(card)
-                    card.get_damage(card.resist + 1)
+                    card.get_damage(card.resist + 1, self)
         else:
             for card in self.point.point1_cards:
                 if card != enemy:
                     self.enemies.append(card)
-                    card.get_damage(card.resist + 1)
+                    card.get_damage(card.resist + 1, self)
         if self.chakra != 0:
             self.chakra -= 1  # тратим чакру
 
@@ -613,7 +649,7 @@ class Kentaru(PlayCard):
         if (self.technic[1] == 'Тайдзюцу' or self.technic[1] == 'Кендзюцу') and \
                 enemy.technic[1] == 'Ниндзюцу':
             self.damage += 1
-        enemy.get_damage(self.damage)  # наносим урон противнику
+        enemy.get_damage(self.damage, self)  # наносим урон противнику
         if self.chakra != 0:
             self.chakra -= 1  # тратим чакру
 
@@ -641,8 +677,6 @@ class Kentaru(PlayCard):
             for point in self.point.info_fragment.main_activity.battlepoints:
                 if point.view.is_enabled and point != self.point:
                     points.append(point)
-
-            print(points)
             enemy.move(self.point, random.choice(points))
 
 
@@ -650,34 +684,229 @@ class Hiruko(PlayCard):
 
     def __init__(self, image, args, *group):
         super().__init__(image, args, group)
+        self.passive_is_used1 = False
         self.himera_is_active = False
+        self.himera_is_used = False
+        self.himera_card = None
 
     def get_ability(self):
-        if self.passive_is_used:
+        if self.passive_is_used1:
             return False
         return True
 
     def ability(self):
-        self.passive_is_used = True
+        self.passive_is_used1 = True
         for card in OTHER_BCARDS:
             if card.short_name == 'i_leave':
                 iva_bonusdeck.add(card)
                 self.point.info_fragment.close()
                 self.point.info_fragment.main_activity.set_card_rise(card)
 
-    def himera(self):
-        pass
+    def get_himera(self):
+        self.point.info_fragment.set_static_mode()
+        self.point.info_fragment.set_attack_mode()
+        self.point.info_fragment.mode = 'himera'
+
+    def himera(self, enemy):
+        self.himera_card = enemy
+        self.himera_is_active = False
+        self.himera_is_used = True
+
+    def get_new_ability(self):
+        if self.himera_card.short_name == 'keiko':
+            if not self.is_attacked:
+                if self.fraction == self.groups()[0].main_fraction:
+                    if len(self.point.point2_cards) > 0:
+                        return True
+                else:
+                    if len(self.point.point1_cards) > 0:
+                        return True
+            return False
+        if self.himera_card.short_name == 'akito':
+            if not self.passive_is_used:
+                if self.fraction == self.groups()[0].main_fraction:
+                    if len(self.point.point1_cards) > 1:
+                        return True
+                else:
+                    if len(self.point.point2_cards) > 1:
+                        return True
+            return False
+        if self.himera_card.short_name == 'ryu':
+            if not self.is_attacked and not self.passive_is_used:
+                if self.fraction == self.groups()[0].main_fraction:
+                    if len(self.point.point2_cards) > 0:
+                        return True
+                else:
+                    if len(self.point.point1_cards) > 0:
+                        return True
+            return False
+        return False
+
+    def new_ability(self):
+        if self.himera_card.short_name == 'keiko':
+            self.point.info_fragment.set_static_mode()
+            self.passive_is_used = True
+            self.point.info_fragment.set_attack_mode()
+        elif self.himera_card.short_name == 'akito':
+            self.point.info_fragment.set_static_mode()
+            self.passive_is_active = True
+            self.point.info_fragment.set_heal_mode()
+        elif self.himera_card.short_name == 'ryu':
+            self.point.info_fragment.set_static_mode()
+            self.passive_is_active = True
+            self.point.info_fragment.set_attack_mode()
+
+    def attack(self, enemy):
+        """Атака"""
+        self.damage = self.set_damage()  # передаём урон
+        if self.technic[1] == 'Ниндзюцу' and enemy.technic[1] == 'Гендзюцу':
+            self.damage += 1
+        if self.technic[1] == 'Гендзюцу' and (enemy.technic[1] == 'Тайдзюцу' or
+                                              enemy.technic[1] == 'Кендзюцу'):
+            self.damage += 1
+        if (self.technic[1] == 'Тайдзюцу' or self.technic[1] == 'Кендзюцу') and \
+                enemy.technic[1] == 'Ниндзюцу':
+            self.damage += 1
+        if self.chakra != 0:
+            self.chakra -= 1  # тратим чакру
+        if self.himera_card.short_name == 'keiko':
+            if self.passive_is_used:
+                enemy.get_damage(self.damage * 3, self)  # наносим урон противнику
+                self.current_health = 0
+                self.is_alive = False  # карта погибает
+                if self.fraction == self.groups()[0].main_fraction:  # отосвюду удаляется
+                    self.point.point1_cards.remove(self)
+                else:
+                    self.point.point2_cards.remove(self)
+                self.kill()
+                self.death()  # а также срабатывает анимация уничтожения
+                return
+            else:
+                enemy.get_damage(self.damage, self)
+                return
+        elif self.himera_card.short_name == 'teeru':
+            enemy.get_damage(self.damage, self)
+            if not enemy.is_alive:
+                bonus = random.choice(konoha_bonusdeck.sprites())
+                konoha_bonusdeck.remove(bonus)
+                print(len(konoha_bonusdeck))
+                return
+        else:
+            enemy.get_damage(self.damage, self)
+
+    def heal(self, friend):
+        if self.himera_card.short_name == 'akito':
+            if self.passive_is_active:
+                self.passive_is_used = True
+                friend.pace += 2
+                self.point.info_fragment.close()
+                self.point.info_fragment.main_activity.set_static_mode()
+                self.point.info_fragment.main_activity.card_is_moving = friend
+                self.point.info_fragment.main_activity.set_move_mode(self.point)
+                self.point.info_fragment.set_static_mode()
+
+    def get_damage(self, damage, *enemy):
+        if self.himera_card.short_name == 'ryu':
+            if self.passive_is_active:
+                self.passive_is_used = True
+                self.is_damaged = 0
+                return
+        if self.himera_card.short_name == 'kitsu':
+            if enemy[0].spec == 'Боец Ближнего боя':
+                self.passive_is_used = random.randint(0, 9)
+                if self.passive_is_used:
+                    self.is_damaged = 0
+                    self.passive_is_used = False
+                    return
+        if damage >= self.resist:
+            self.is_damaged = damage - self.resist
+        else:
+            self.is_damaged = 0
+        if self.current_health <= self.is_damaged:  # если урон больше чем здоровье + стойкость
+            self.current_health = 0
+            self.is_alive = False  # карта погибает
+            if self.fraction == self.groups()[0].main_fraction:  # отосвюду удаляется
+                self.point.point1_cards.remove(self)
+            else:
+                self.point.point2_cards.remove(self)
+            self.kill()
+            self.death()  # а также срабатывает анимация уничтожения
+        else:
+            self.current_health -= self.is_damaged  # наносим урон карте
 
 
 class Iketani(Kentaru):
-    pass
+
+    def attack(self, enemy):
+        self.kicked.empty()
+        self.damage = self.set_damage()  # передаём урон
+        if self.technic[1] == 'Ниндзюцу' and enemy.technic[1] == 'Гендзюцу':
+            self.damage += 1
+        if self.technic[1] == 'Гендзюцу' and (enemy.technic[1] == 'Тайдзюцу' or
+                                              enemy.technic[1] == 'Кендзюцу'):
+            self.damage += 1
+        if (self.technic[1] == 'Тайдзюцу' or self.technic[1] == 'Кендзюцу') and \
+                enemy.technic[1] == 'Ниндзюцу':
+            self.damage += 1
+        enemy.get_damage(self.damage, self)  # наносим урон противнику
+        if self.chakra != 0:
+            self.chakra -= 1  # тратим чакру
+
+        if enemy.is_alive:
+            points = []
+            self.kicked.add(KickedCard(enemy, 'right'))
+            for i in range(len(play_board)):
+                for j in range(len(play_board)):
+                    if self.point.view == play_board[i][j]:  # подсвечиваем все ближайшие точки
+                        if i - 1 >= 0:  # cлева
+                            play_board[i - 1][j].is_hovered = True
+                            play_board[i - 1][j].is_enabled = True
+                        if i + 1 < len(play_board):  # справа
+                            play_board[i + 1][j].is_hovered = True
+                            play_board[i + 1][j].is_enabled = True
+                        if j - 1 >= 0:  # сверху
+                            play_board[i][j - 1].is_hovered = True
+                            play_board[i][j - 1].is_enabled = True
+                        if j + 1 < len(play_board):  # и снизу
+                            play_board[i][j + 1].is_hovered = True
+                            play_board[i][j + 1].is_enabled = True
+                    elif not play_board[i][j].is_hovered:  # остальные блокируем
+                        play_board[i][j].is_enabled = False
+            for point in self.point.info_fragment.main_activity.battlepoints:
+                if point.view.is_enabled and point != self.point:
+                    points.append(point)
+            enemy.move(self.point, random.choice(points))
 
 
 class Jerry(PlayCard):
 
-    def ability(self):
-        pass
+    def __init__(self, image, args, *group):
+        super().__init__(image, args, group)
+        self.kamikazes = pygame.sprite.Group()
 
+    def get_ability(self):
+        if not self.is_attacked:
+            if self.fraction == self.groups()[0].main_fraction:
+                for card in self.point.point1_cards:
+                    if card.short_name == 'shu' and self.point.point2_cards:
+                        return True
+            else:
+                for card in self.point.point2_cards:
+                    if card.short_name == 'shu' and self.point.point1_cards:
+                        return True
+        return False
+
+    def ability(self):
+        self.point.info_fragment.set_static_mode()
+        self.point.info_fragment.set_attack_mode()
+
+    def get_kamikaze(self, enemy, point):
+        self.is_attacked = True
+        self.kamikazes.add(Kamikaze(point))
+        if enemy.resist - 2 < 0:
+            enemy.resist = 0
+        else:
+            enemy.resist -= 2
 
 """Классы игровых карт Ивагакуре"""
 class Keiko(PlayCard):
@@ -709,7 +938,7 @@ class Keiko(PlayCard):
                 enemy.technic[1] == 'Ниндзюцу':
             self.damage += 1
         if self.passive_is_used:
-            enemy.get_damage(self.damage * 3)  # наносим урон противнику
+            enemy.get_damage(self.damage * 3, self)  # наносим урон противнику
             self.current_health = 0
             self.is_alive = False  # карта погибает
             if self.fraction == self.groups()[0].main_fraction:  # отосвюду удаляется
@@ -719,7 +948,7 @@ class Keiko(PlayCard):
             self.kill()
             self.death()  # а также срабатывает анимация уничтожения
         else:
-            enemy.get_damage(self.damage)
+            enemy.get_damage(self.damage, self)
 
 
 class Akito(PlayCard):
@@ -744,8 +973,8 @@ class Akito(PlayCard):
             self.passive_is_used = True
             friend.pace += 2
             self.point.info_fragment.close()
-            self.point.info_fragment.main_activity.card_is_moving = friend
             self.point.info_fragment.main_activity.set_static_mode()
+            self.point.info_fragment.main_activity.card_is_moving = friend
             self.point.info_fragment.main_activity.set_move_mode(self.point)
             self.point.info_fragment.set_static_mode()
         else:
@@ -760,16 +989,67 @@ class Akito(PlayCard):
 class Ryu(PlayCard):
 
     def get_ability(self):
-        if self.passive_is_used:
-            return False
-        return True
+        if not self.is_attacked and not self.passive_is_used:
+            if self.fraction == self.groups()[0].main_fraction:
+                if len(self.point.point2_cards) > 0:
+                    return True
+            else:
+                if len(self.point.point1_cards) > 0:
+                    return True
+        return False
 
     def ability(self):
-        pass
+        self.point.info_fragment.set_static_mode()
+        self.passive_is_active = True
+        self.point.info_fragment.set_attack_mode()
+
+    def get_damage(self, damage, *enemy):
+        if not self.passive_is_active:
+            if damage >= self.resist:
+                self.is_damaged = damage - self.resist
+            else:
+                self.is_damaged = 0
+            if self.current_health <= self.is_damaged:  # если урон больше чем здоровье + стойкость
+                self.current_health = 0
+                self.is_alive = False  # карта погибает
+                if self.fraction == self.groups()[0].main_fraction:  # отосвюду удаляется
+                    self.point.point1_cards.remove(self)
+                else:
+                    self.point.point2_cards.remove(self)
+                self.kill()
+                self.death()  # а также срабатывает анимация уничтожения
+            else:
+                self.current_health -= self.is_damaged  # наносим урон карте
+        else:
+            self.passive_is_used = True
+            self.is_damaged = 0
 
 
 class Kitsu(PlayCard):
-    pass
+
+    def get_damage(self, damage, *enemy):
+        """Получение урона"""
+        if enemy[0].spec == 'Боец Ближнего боя':
+            self.passive_is_used = random.randint(0, 9)
+            if self.passive_is_used:
+                self.is_damaged = 0
+                self.passive_is_used = False
+                return
+        if damage >= self.resist:
+            self.is_damaged = damage - self.resist
+        else:
+            self.is_damaged = 0
+        if self.current_health <= self.is_damaged:  # если урон больше чем здоровье + стойкость
+            self.current_health = 0
+            self.is_alive = False  # карта погибает
+            if self.fraction == self.groups()[0].main_fraction:  # отосвюду удаляется
+                self.point.point1_cards.remove(self)
+            else:
+                self.point.point2_cards.remove(self)
+            self.kill()
+            self.death()  # а также срабатывает анимация уничтожения
+        else:
+            self.current_health -= self.is_damaged  # наносим урон карте
 
 
 class Benkei(PlayCard):
@@ -777,7 +1057,24 @@ class Benkei(PlayCard):
 
 
 class Teeru(PlayCard):
-    pass
+
+    def attack(self, enemy):
+        """Атака"""
+        self.damage = self.set_damage()  # передаём урон
+        if self.technic[1] == 'Ниндзюцу' and enemy.technic[1] == 'Гендзюцу':
+            self.damage += 1
+        if self.technic[1] == 'Гендзюцу' and (enemy.technic[1] == 'Тайдзюцу' or
+                                              enemy.technic[1] == 'Кендзюцу'):
+            self.damage += 1
+        if (self.technic[1] == 'Тайдзюцу' or self.technic[1] == 'Кендзюцу') and \
+                enemy.technic[1] == 'Ниндзюцу':
+            self.damage += 1
+        enemy.get_damage(self.damage, self)  # наносим урон противнику
+        if not enemy.is_alive:
+            bonus = random.choice(konoha_bonusdeck.sprites())
+            konoha_bonusdeck.remove(bonus)
+        if self.chakra != 0:
+            self.chakra -= 1  # тратим чакру
 
 
 """Классы бонусных карт Конохагакуре"""
@@ -785,7 +1082,10 @@ class BarKonoha(BonusCard):
 
     def bonus(self):
         for card in PLAYCARDS:
-            if card.fraction == KONOHAGAKURE:
+            if card.fraction == KONOHAGAKURE and card.groups():
+                card.synergy = 'Все'
+        for card in OTHER_PCARDS:
+            if card.fraction == KONOHAGAKURE and card.groups():
                 card.synergy = 'Все'
 
 
@@ -798,20 +1098,62 @@ class Himera(BonusCard):
 
 
 class Tsunami(BonusCard):
-    pass
+
+    def bonus(self):
+        for card in PLAYCARDS:
+            if card.short_name == 'akemi' and card.groups():
+                card.passive_is_used = True
+            if card.short_name == 'kentaru' and card.groups():
+                for other_card in OTHER_PCARDS:
+                    if other_card.short_name == 'iketani':
+                        card.groups()[0].add(other_card)
+                        card.groups()[0].add_card([other_card])
+                        card.groups()[0].update_hand()
+                card.current_health = 0
+                card.is_alive = False  # карта погибает
+                if card.point != card.groups()[0]:
+                    if card.fraction == card.groups()[0].main_fraction:  # отосвюду удаляется
+                        card.point.point1_cards.remove(card)
+                    else:
+                        card.point.point2_cards.remove(card)
+                card.kill()
 
 
 class KingOfMouse(BonusCard):
-    pass
+
+
+    def bonus(self):
+        for card in OTHER_PCARDS:
+            if card.short_name == 'jerry':
+                for other_card in PLAYCARDS:
+                    if other_card.fraction == KONOHAGAKURE and other_card.groups():
+                        other_card.groups()[0].add(card)
+                        other_card.groups()[0].add_card([card])
+                        other_card.groups()[0].update_hand()
+                        return
+                for other_card in OTHER_PCARDS:
+                    if other_card.fraction == KONOHAGAKURE and other_card.groups():
+                        other_card.groups()[0].add(card)
+                        other_card.groups()[0].add_card([card])
+                        other_card.groups()[0].update_hand()
+                        return
 
 
 class Ren(BonusCard):
-    pass
 
+    def bonus(self):
+        pass
 
 """Классы бонусных карт Ивагакуре"""
 class HymnIva(BonusCard):
-    pass
+
+    def bonus(self):
+        for card in PLAYCARDS:
+            if card.fraction == IVAGAKURE and card.groups():
+                card.resist += 1
+        for card in OTHER_PCARDS:
+            if card.fraction == IVAGAKURE and card.groups():
+                card.resist += 1
 
 
 class Turtle(BonusCard):
