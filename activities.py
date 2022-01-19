@@ -23,14 +23,14 @@ class BasicActivity:
             self.load_ui(button)  # преобразование кнопок в ui-кнопки
         self.termination_dialog = None  # подтверждение выхода
         self.exception_msg = None  # сообщение с ошибкой
-        self.is_blocked = False
+        self.block = False
 
     def run(self, card=None):
         """Запуск основного цикла"""
         while True:  # а вот и цикл!
             for event in pygame.event.get():  # pygame ждёт, чтобы пользователь что-то сделал
                 if event.type == pygame.QUIT:  # ты куда???... (выход при нажатии на системный крестик)
-                    if not self.is_blocked:
+                    if not self.block:
                         self.get_termination_dialog()  # спросим у пользователя, уверен ли он в своём выходе
                         self.block_activity()  # блокируем активность
                 elif event.type == pygame.USEREVENT:  # проверка событий, связанных с ui-элементами
@@ -45,7 +45,7 @@ class BasicActivity:
                                     event.ui_element == self.termination_dialog.close_window_button:
                                 self.unblock_activity()  # при закрытии окна разблокируем активность
                 elif event.type == pygame.KEYDOWN:  # нажатие клавиши на клавиатуре
-                    if not self.is_blocked:
+                    if not self.block:
                         if event.key == pygame.K_ESCAPE:
                             if self.old_activity:
                                 pygame.time.wait(100)  # искусственная задержка (100 мс)
@@ -184,11 +184,11 @@ class BasicActivity:
             sprite.is_enabled = True  # разблокировка всех спрайтов
         for button in self.buttons:
             button.is_enabled = True  # и кнопок
-        self.is_blocked = False
+        self.block = False
 
     def get_termination_dialog(self):
         """Создание диалогового окна для подтверждения выхода из игры"""
-        self.is_blocked = True
+        self.block = True
         self.termination_dialog = pygame_gui.windows.UIConfirmationDialog(
             rect=pygame.Rect(width // 2 - 150, height // 2 - 100, 300, 200),  # размеры
             manager=self.manager,  # менеджер
@@ -207,6 +207,35 @@ class BasicActivity:
             window_title='Ошибка')
         self.exception_msg.dismiss_button.set_text('OK')
         self.exception_msg.close_window_button.set_text('X')
+
+
+class FinalActivity(BasicActivity):
+
+    def __init__(self, result):
+        super().__init__(basic_back, [ok_button])
+        self.result = result
+
+    def output(self):
+        screen.blit(self.background, (0, 0))
+        if self.result == 'konoha':
+            title = b_font2.render('Коноха победила!', 1, pygame.Color('black'))
+            image = konoha_win
+            img_rect = konoha_win.get_rect()
+        elif self.result == 'iva':
+            title = b_font1.render('Ива победила!', 1, pygame.Color('black'))
+            image = iva_win
+            img_rect = iva_win.get_rect()
+        else:
+            title = b_font1.render('Ничья!', 1, pygame.Color('black'))
+            image = draw_back
+            img_rect = draw_back.get_rect()
+        title_coords = title.get_rect()
+        title_coords.centerx = screen.get_rect().centerx
+        title_coords.centery = 200
+        img_rect.centerx = screen.get_rect().centerx
+        img_rect.centery = 450
+        screen.blit(image, img_rect)
+        screen.blit(title, title_coords)
 
 
 class Fragment(BasicActivity):
@@ -282,7 +311,7 @@ class MenuFragment(Fragment):
         while True:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    if not self.is_blocked:
+                    if not self.block:
                         self.get_termination_dialog()
                         self.block_activity()
                 elif event.type == pygame.USEREVENT:
@@ -299,7 +328,7 @@ class MenuFragment(Fragment):
                                     event.ui_element == self.termination_dialog.close_window_button:
                                 self.unblock_activity()
                 elif event.type == pygame.KEYDOWN:
-                    if not self.is_blocked:
+                    if not self.block:
                         if event.key == pygame.K_ESCAPE:
                             if self.old_activity:
                                 pygame.time.wait(100)
@@ -788,6 +817,8 @@ class BattleFragment(Fragment):
                 if self.current_card.short_name == 'hiruko' and self.current_card.himera_is_used:
                     if self.current_card.get_new_ability():
                         item_list.append('Доп.способность')
+                if self.current_card.short_name == 'akito' and self.current_card.new_technic:
+                    item_list.insert(1, 'Атаковать')
                 self.selection_list.set_item_list(item_list)  # сохраняем все действия
                 self.selection_list.set_default_selection()  # стандартный выбор "–"
                 self.block_battlepoint()
@@ -815,6 +846,8 @@ class BattleFragment(Fragment):
                     item_list.append('Способность')
                 if self.current_card.short_name == 'hiruko' and self.current_card.himera_is_active:
                     item_list.append('Химера')
+                if self.current_card.short_name == 'akito' and self.current_card.new_technic:
+                    item_list.insert(1, 'Атаковать')
                 self.selection_list.set_item_list(item_list)
                 self.selection_list.set_default_selection()
                 self.block_battlepoint()
@@ -1104,19 +1137,20 @@ class GameActivity(BasicActivity):
                                 self.set_static_mode()
                             self.selection_list2.kill()
                 elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        if self.mode == 'move':
-                            for battlepoint in self.battlepoints:
-                                if self.card_is_moving in battlepoint:
-                                    self.set_static_mode()
-                                    self.get_battlepoint_info(battlepoint)
-                        else:
-                            self.get_main_menu()
-                    elif event.key == pygame.K_SPACE:
-                        if self.first_cards.get_state():
-                            self.mouse_click(endstep_button1)
-                        else:
-                            self.mouse_click(endstep_button2)
+                    if not self.block:
+                        if event.key == pygame.K_ESCAPE:
+                            if self.mode == 'move':
+                                for battlepoint in self.battlepoints:
+                                    if self.card_is_moving in battlepoint:
+                                        self.set_static_mode()
+                                        self.get_battlepoint_info(battlepoint)
+                            else:
+                                self.get_main_menu()
+                        elif event.key == pygame.K_SPACE:
+                            if self.first_cards.get_state():
+                                self.mouse_click(endstep_button1)
+                            else:
+                                self.mouse_click(endstep_button2)
                 elif event.type == pygame.MOUSEMOTION:
                     self.mouse_motion(event)
                 elif event.type == pygame.MOUSEBUTTONDOWN:
@@ -1136,9 +1170,15 @@ class GameActivity(BasicActivity):
                                     self.mouse_click(card)
                 self.manager.process_events(event)
             if self.first_cards.score >= 100 or len(self.second_cards) == 0:
-                return
+                if self.first_cards.fraction == KONOHAGAKURE:
+                    return FinalActivity('konoha').run()
+                else:
+                    return FinalActivity('iva').run()
             if self.second_cards.score >= 100 or len(self.first_cards) == 0:
-                return
+                if self.first_cards.fraction == KONOHAGAKURE:
+                    return FinalActivity('iva').run()
+                else:
+                    return FinalActivity('konoha').run()
             self.manager.update(FPS)
             self.output()
             self.manager.draw_ui(screen)
@@ -1418,6 +1458,7 @@ class GameActivity(BasicActivity):
     def set_static_mode(self):
         """Установка стандартного состояния игровой активности"""
         self.mode = 'static'
+        self.block = False
         self.first_cards.update_hand()  # загрузка всех карт в руке
         self.second_cards.update_hand()
         self.card_is_moving = None
@@ -1508,6 +1549,7 @@ class GameActivity(BasicActivity):
                 card.is_enabled = False
         for button in self.ui_buttons:
             button.is_enabled = False  # все ui-кнопки
+        self.block = True
         # БЛОКИРУЕМ
 
     def block_hand(self):
@@ -1524,6 +1566,7 @@ class GameActivity(BasicActivity):
                 card.is_enabled = False
         for button in self.ui_buttons:
             button.is_enabled = False
+        self.block = True
 
     def get_main_menu(self):
         """Запуск фрагмента главного меню"""
@@ -1547,3 +1590,7 @@ class GameActivity(BasicActivity):
     def get_battlepoint_info(self, battlepoint):
         battlepoint.info_fragment.run()  # выдача информации о боевой точке
         battlepoint.update_card_draw()
+
+
+
+

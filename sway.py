@@ -95,9 +95,12 @@ def game_init():
     jerry = cards.Jerry(f'{PLAYCARDS_DATA[13][3]}.jpg', PLAYCARDS_DATA[13])
     kubi = cards.PlayCard(f'{PLAYCARDS_DATA[14][3]}.jpg', PLAYCARDS_DATA[14])
     vashte = cards.PlayCard(f'{PLAYCARDS_DATA[15][3]}.jpg', PLAYCARDS_DATA[15])
-    clone = cards.PlayCard(f'{PLAYCARDS_DATA[16][3]}.jpg', PLAYCARDS_DATA[16])
-    i_leave = cards.BonusCard(f'{BONUSCARDS_DATA[10][3]}.jpg', BONUSCARDS_DATA[10])
-    other_pcards = [iketani, jerry, kubi, vashte, clone]
+    clone1 = cards.PlayCard(f'{PLAYCARDS_DATA[16][3]}.jpg', PLAYCARDS_DATA[16])
+    clone2 = cards.PlayCard(f'{PLAYCARDS_DATA[16][3]}.jpg', PLAYCARDS_DATA[16])
+    clone3 = cards.PlayCard(f'{PLAYCARDS_DATA[16][3]}.jpg', PLAYCARDS_DATA[16])
+    clone4 = cards.PlayCard(f'{PLAYCARDS_DATA[16][3]}.jpg', PLAYCARDS_DATA[16])
+    i_leave = cards.I_leave(f'{BONUSCARDS_DATA[10][3]}.jpg', BONUSCARDS_DATA[10])
+    other_pcards = [iketani, jerry, kubi, vashte, clone1, clone2, clone3, clone4]
     other_bcards = [i_leave]
 
     """Создание всех окон (активностей и фрагментов)"""
@@ -149,6 +152,12 @@ def game_init():
     """Очистка списков карт"""
     PLAYCARDS.clear()
     BONUSCARDS.clear()
+    OTHER_PCARDS.clear()
+    OTHER_BCARDS.clear()
+
+    """Очистка списков с эффектами карт"""
+    P_SECOND_INFO.clear()
+    B_SECOND_INFO.clear()
 
     """Заполнение списка игровых карт"""
     for card in konoha_deck:

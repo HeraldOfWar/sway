@@ -34,6 +34,8 @@ k_battlefield = load_image(BACK_N_BUT, 'main_battlefield.jpg')  # игровое
 i_battlefield = pygame.transform.rotate(k_battlefield, 180)  # игровое поле при выборе Ивагакуре
 konoha_bonus = load_image(BACK_N_BUT, 'konoha_bonus.jpg')  # рубашка карт Конохагакуре
 iva_bonus = load_image(BACK_N_BUT, 'iva_bonus.jpg')  # рубашка карт Ивагакуре
+konoha_win, iva_win = load_image(BACK_N_BUT, 'konoha_win.png'), load_image(BACK_N_BUT, 'iva_win.png')
+draw_back = load_image(BACK_N_BUT, 'draw.jpg')
 
 """Фоны для боевых точек"""
 img_konoha_pass1 = load_image(BACK_N_BUT, 'konoha_pass1.jpg')  # перевал 1 (Коноха)

@@ -175,11 +175,16 @@ class PlayCard(pygame.sprite.Sprite):
                         if card.name.split()[0] in self.synergy:
                             damage += 1
                     for card in self.point.point1_cards:
-                        if card.short_name == 'benkei':
+                        if card.short_name == 'benkei' and not card.passive_is_used:
                             return damage - 2
+                        if card.short_name == 'benkei' and card.passive_is_used:
+                            return damage + 1
                         if card.short_name == 'hiruko' and card.himera_is_used:
-                            if card.himera_card.short_name == 'benkei':
+                            if card.himera_card.short_name == 'benkei' and \
+                                    not card.himera_card.passive_is_used:
                                 return damage - 2
+                            if card.himera_card.short_name == 'benkei' and card.himera_card.passive_is_used:
+                                return damage + 1
                 else:
                     if len(self.point.point2_cards) > 1 and self.synergy == 'Все':
                         damage += 1
@@ -187,11 +192,16 @@ class PlayCard(pygame.sprite.Sprite):
                         if card.name.split()[0] in self.synergy:
                             damage += 1
                     for card in self.point.point2_cards:
-                        if card.short_name == 'benkei':
+                        if card.short_name == 'benkei' and not card.passive_is_used:
                             return damage - 2
+                        if card.short_name == 'benkei' and card.passive_is_used:
+                            return damage + 1
                         if card.short_name == 'hiruko' and card.himera_is_used:
-                            if card.himera_card.short_name == 'benkei':
+                            if card.himera_card.short_name == 'benkei' and \
+                                    not card.himera_card.passive_is_used:
                                 return damage - 2
+                            if card.himera_card.short_name == 'benkei' and card.himera_card.passive_is_used:
+                                return damage + 1
         return damage  # возвращаем урон
 
     def get_damage(self, damage, *enemy):
@@ -769,55 +779,58 @@ class Hiruko(PlayCard):
             self.damage += 1
         if self.chakra != 0:
             self.chakra -= 1  # тратим чакру
-        if self.himera_card.short_name == 'keiko':
-            if self.passive_is_used:
-                enemy.get_damage(self.damage * 3, self)  # наносим урон противнику
-                self.current_health = 0
-                self.is_alive = False  # карта погибает
-                if self.fraction == self.groups()[0].main_fraction:  # отосвюду удаляется
-                    self.point.point1_cards.remove(self)
+        if self.himera_is_used:
+            if self.himera_card.short_name == 'keiko':
+                if self.passive_is_used:
+                    enemy.get_damage(self.damage * 3, self)  # наносим урон противнику
+                    self.current_health = 0
+                    self.is_alive = False  # карта погибает
+                    if self.fraction == self.groups()[0].main_fraction:  # отосвюду удаляется
+                        self.point.point1_cards.remove(self)
+                    else:
+                        self.point.point2_cards.remove(self)
+                    self.kill()
+                    self.death()  # а также срабатывает анимация уничтожения
+                    return
                 else:
-                    self.point.point2_cards.remove(self)
-                self.kill()
-                self.death()  # а также срабатывает анимация уничтожения
-                return
-            else:
+                    enemy.get_damage(self.damage, self)
+                    return
+            elif self.himera_card.short_name == 'teeru':
                 enemy.get_damage(self.damage, self)
-                return
-        elif self.himera_card.short_name == 'teeru':
-            enemy.get_damage(self.damage, self)
-            if not enemy.is_alive:
-                bonus = random.choice(konoha_bonusdeck.sprites())
-                konoha_bonusdeck.remove(bonus)
-                print(len(konoha_bonusdeck))
-                return
+                if not enemy.is_alive:
+                    bonus = random.choice(konoha_bonusdeck.sprites())
+                    konoha_bonusdeck.remove(bonus)
+                    print(len(konoha_bonusdeck))
+                    return
         else:
             enemy.get_damage(self.damage, self)
 
     def heal(self, friend):
-        if self.himera_card.short_name == 'akito':
-            if self.passive_is_active:
-                self.passive_is_used = True
-                friend.pace += 2
-                self.point.info_fragment.close()
-                self.point.info_fragment.main_activity.set_static_mode()
-                self.point.info_fragment.main_activity.card_is_moving = friend
-                self.point.info_fragment.main_activity.set_move_mode(self.point)
-                self.point.info_fragment.set_static_mode()
+        if self.himera_is_used:
+            if self.himera_card.short_name == 'akito':
+                if self.passive_is_active:
+                    self.passive_is_used = True
+                    friend.pace += 2
+                    self.point.info_fragment.close()
+                    self.point.info_fragment.main_activity.set_static_mode()
+                    self.point.info_fragment.main_activity.card_is_moving = friend
+                    self.point.info_fragment.main_activity.set_move_mode(self.point)
+                    self.point.info_fragment.set_static_mode()
 
     def get_damage(self, damage, *enemy):
-        if self.himera_card.short_name == 'ryu':
-            if self.passive_is_active:
-                self.passive_is_used = True
-                self.is_damaged = 0
-                return
-        if self.himera_card.short_name == 'kitsu':
-            if enemy[0].spec == 'Боец Ближнего боя':
-                self.passive_is_used = random.randint(0, 9)
-                if self.passive_is_used:
+        if self.himera_is_used:
+            if self.himera_card.short_name == 'ryu':
+                if self.passive_is_active:
+                    self.passive_is_used = True
                     self.is_damaged = 0
-                    self.passive_is_used = False
                     return
+            if self.himera_card.short_name == 'kitsu':
+                if enemy[0].spec == 'Боец Ближнего боя':
+                    self.passive_is_used = random.randint(0, 9)
+                    if self.passive_is_used:
+                        self.is_damaged = 0
+                        self.passive_is_used = False
+                        return
         if damage >= self.resist:
             self.is_damaged = damage - self.resist
         else:
@@ -953,6 +966,10 @@ class Keiko(PlayCard):
 
 class Akito(PlayCard):
 
+    def __init__(self, image, args, *group):
+        super().__init__(image, args, group)
+        self.new_technic = None
+
     def get_ability(self):
         if not self.passive_is_used:
             if self.fraction == self.groups()[0].main_fraction:
@@ -984,6 +1001,52 @@ class Akito(PlayCard):
                 friend.current_health += int(self.technic[0])
             self.is_healed = True
             self.chakra -= 1
+
+    def set_damage(self):
+        """Установка урона"""
+        if self.spec != 'Медик' or self.new_technic:
+            damage = self.pace + self.chakra + int(self.new_technic[0])  # урон складывается из 3 показателей
+        else:
+            damage = self.pace + self.chakra  # но не у медиков
+        if self.chakra == 0:
+            return 0
+        if self.groups():
+            if self.point != self.groups()[0]:  # если срабатывает синергия
+                if self.fraction == self.groups()[0].main_fraction:
+                    if len(self.point.point1_cards) > 1 and self.synergy == 'Все':
+                        damage += 1  # добавляем 1 к урону
+                    for card in self.point.point1_cards:
+                        if card.name.split()[0] in self.synergy:
+                            damage += 1
+                    for card in self.point.point1_cards:
+                        if card.short_name == 'benkei' and not card.passive_is_used:
+                            return damage - 2
+                        if card.short_name == 'benkei' and card.passive_is_used:
+                            return damage + 1
+                        if card.short_name == 'hiruko' and card.himera_is_used:
+                            if card.himera_card.short_name == 'benkei' and \
+                                    not card.himera_card.passive_is_used:
+                                return damage - 2
+                            if card.himera_card.short_name == 'benkei' and card.himera_card.passive_is_used:
+                                return damage + 1
+                else:
+                    if len(self.point.point2_cards) > 1 and self.synergy == 'Все':
+                        damage += 1
+                    for card in self.point.point2_cards:
+                        if card.name.split()[0] in self.synergy:
+                            damage += 1
+                    for card in self.point.point2_cards:
+                        if card.short_name == 'benkei' and not card.passive_is_used:
+                            return damage - 2
+                        if card.short_name == 'benkei' and card.passive_is_used:
+                            return damage + 1
+                        if card.short_name == 'hiruko' and card.himera_is_used:
+                            if card.himera_card.short_name == 'benkei' and \
+                                    not card.himera_card.passive_is_used:
+                                return damage - 2
+                            if card.himera_card.short_name == 'benkei' and card.himera_card.passive_is_used:
+                                return damage + 1
+        return damage  # возвращаем урон
 
 
 class Ryu(PlayCard):
@@ -1170,6 +1233,18 @@ class Ren(BonusCard):
                     self.main_activity.first_cards.update_hand()
                     battlepoint.point2_cards.clear()
 
+
+class I_leave(BonusCard):
+
+    def bonus(self):
+        if self.main_activity.first_cards.fraction == KONOHAGAKURE:
+            bonuscard = random.choice(self.main_activity.second_cards.bonus_deck.sprites())
+            self.main_activity.second_cards.bonus_deck.remove(bonuscard)
+        else:
+            bonuscard = random.choice(self.main_activity.first_cards.bonus_deck.sprites())
+            self.main_activity.first_cards.bonus_deck.remove(bonuscard)
+
+
 """Классы бонусных карт Ивагакуре"""
 class HymnIva(BonusCard):
 
@@ -1183,16 +1258,72 @@ class HymnIva(BonusCard):
 
 
 class Turtle(BonusCard):
-    pass
+
+    def bonus(self):
+        for card in OTHER_PCARDS:
+            if card.short_name == 'clone':
+                if self.main_activity.first_cards.fraction == KONOHAGAKURE:
+                    self.main_activity.second_cards.add(card)
+                    self.main_activity.second_cards.add_card([card])
+                    self.main_activity.second_cards.update_hand()
+                else:
+                    self.main_activity.first_cards.add(card)
+                    self.main_activity.first_cards.add_card([card])
+                    self.main_activity.first_cards.update_hand()
 
 
 class Kin(BonusCard):
-    pass
+
+    def bonus(self):
+        for card in PLAYCARDS:
+            if card.short_name == 'benkei':
+                card.passive_is_used = True
 
 
 class TrueMedic(BonusCard):
-    pass
+
+    def bonus(self):
+        for card in PLAYCARDS:
+            if card.short_name == 'akito':
+                card.new_technic = [4, 'Ниндзюцу']
 
 
 class Ambitions(BonusCard):
-    pass
+
+    def bonus(self):
+        if self.main_activity.first_cards.main_fraction == KONOHAGAKURE:
+            for battlepoint in self.main_activity.battlepoints:
+                if len(battlepoint.point2_cards) > 0:
+                    for i in range(len(battlepoint.point2_cards)):
+                        if battlepoint.point2_cards[i].short_name == 'keiko':
+                            if i == 0:
+                                for j in range(len(battlepoint.point2_cards)):
+                                    battlepoint.point2_cards[j].kill()
+                            elif i == 1:
+                                battlepoint.point2_cards[i].kill()
+                                battlepoint.point2_cards[i - 1].kill()
+                                if len(battlepoint.point2_cards) == 3:
+                                    battlepoint.point2_cards[i + 1].kill()
+                            else:
+                                for j in range(3):
+                                    battlepoint.point2_cards[2 - j].kill()
+                            battlepoint.point2_cards.clear()
+                            break
+        else:
+            for battlepoint in self.main_activity.battlepoints:
+                if len(battlepoint.point1_cards) > 0:
+                    for i in range(len(battlepoint.point1_cards)):
+                        if battlepoint.point1_cards[i].short_name == 'keiko':
+                            if i == 0:
+                                for j in range(len(battlepoint.point1_cards)):
+                                    battlepoint.point1_cards[j].kill()
+                            elif i == 1:
+                                battlepoint.point1_cards[i].kill()
+                                battlepoint.point1_cards[i - 1].kill()
+                                if len(battlepoint.point1_cards) == 3:
+                                    battlepoint.point1_cards[i + 1].kill()
+                            else:
+                                for j in range(3):
+                                    battlepoint.point1_cards[2 - j].kill()
+                            battlepoint.point1_cards.clear()
+                            break
