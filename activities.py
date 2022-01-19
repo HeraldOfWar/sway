@@ -434,6 +434,10 @@ class BattleFragment(Fragment):
                                         point = self.battlepoint. \
                                             second_points[self.battlepoint.point2_cards. \
                                             index(self.card_is_getting)]
+                                    else:
+                                        point = self.battlepoint. \
+                                            first_points[self.battlepoint.point1_cards. \
+                                            index(self.card_is_getting)]
                                         self.current_card.get_kamikaze(self.card_is_getting, point)
                                     self.load_ui(battle_ok)  # загружаем кнопку ОК
                                     self.choose_enemy = False  # устанавливаем значения режимов
@@ -1309,6 +1313,13 @@ class GameActivity(BasicActivity):
                     card.recover()
                 for battlepoint in self.battlepoints:
                     if len(battlepoint.point1_cards) > len(battlepoint.point2_cards):
+                        battlepoint.is_under = self.first_cards.fraction
+                    elif len(battlepoint.point2_cards) > len(battlepoint.point1_cards):
+                        battlepoint.is_under = self.second_cards.fraction
+                    else:
+                        battlepoint.is_under = None
+                for battlepoint in self.battlepoints:
+                    if battlepoint.is_under == self.first_cards.fraction:
                         if battlepoint.title == 'Перевал 4' or battlepoint.title == 'Перевал 5' or \
                                 battlepoint.title == 'Перевал 6':
                             self.first_cards.score += 1
@@ -1327,10 +1338,17 @@ class GameActivity(BasicActivity):
                 for card in self.second_cards.hand:
                     card.recover()
                 for battlepoint in self.battlepoints:
-                    if len(battlepoint.point1_cards) < len(battlepoint.point2_cards):
+                    if len(battlepoint.point1_cards) > len(battlepoint.point2_cards):
+                        battlepoint.is_under = self.first_cards.fraction
+                    elif len(battlepoint.point2_cards) > len(battlepoint.point1_cards):
+                        battlepoint.is_under = self.second_cards.fraction
+                    else:
+                        battlepoint.is_under = None
+                for battlepoint in self.battlepoints:
+                    if battlepoint.is_under == self.second_cards.fraction:
                         if battlepoint.title == 'Перевал 1' or battlepoint.title == 'Перевал 2' or \
                                 battlepoint.title == 'Перевал 3':
-                            self.first_cards.score += 1
+                            self.second_cards.score += 1
                         self.second_cards.score += battlepoint.score
                 return
             elif view == bonus_button1:

@@ -463,9 +463,9 @@ class Kamikaze(pygame.sprite.Sprite):
 
     def update(self):
         if self.rect.centerx != self.point.centerx:
-            if (self.point.centerx - self.rect.centerx) // 100 < 1:
+            if (self.point.centerx - self.rect.centerx) // 60 < 1:
                 self.rect.centerx = self.point.centerx
-            self.rect.x += (self.point.centerx - self.rect.centerx) // 100
+            self.rect.x += (self.point.centerx - self.rect.centerx) // 60
         else:
             self.image = self.boom_image
             return 'ready'
@@ -1116,6 +1116,8 @@ class Tsunami(BonusCard):
                         card.point.point1_cards.remove(card)
                     else:
                         card.point.point2_cards.remove(card)
+                else:
+                    card.groups()[0].hand.remove(card)
                 card.kill()
 
 
@@ -1142,7 +1144,31 @@ class KingOfMouse(BonusCard):
 class Ren(BonusCard):
 
     def bonus(self):
-        pass
+        for battlepoint in self.main_activity.battlepoints:
+            if len(battlepoint.point1_cards) > len(battlepoint.point2_cards):
+                battlepoint.is_under = self.main_activity.first_cards.fraction
+            elif len(battlepoint.point2_cards) > len(battlepoint.point1_cards):
+                battlepoint.is_under = self.main_activity.second_cards.fraction
+            else:
+                battlepoint.is_under = None
+        for battlepoint in self.main_activity.battlepoints:
+            if battlepoint.is_under == IVAGAKURE:
+                if self.main_activity.first_cards.main_fraction == KONOHAGAKURE:
+                    for i in range(len(battlepoint.point1_cards)):
+                        battlepoint.point1_cards[i].kill()
+                        battlepoint.point1_cards[i].fraction = IVAGAKURE
+                        self.main_activity.second_cards.add(battlepoint.point1_cards[i])
+                    self.main_activity.second_cards.add_card(battlepoint.point1_cards)
+                    self.main_activity.second_cards.update_hand()
+                    battlepoint.point1_cards.clear()
+                else:
+                    for i in range(len(battlepoint.point2_cards)):
+                        battlepoint.point2_cards[i].kill()
+                        battlepoint.point2_cards[i].fraction = IVAGAKURE
+                        self.main_activity.second_cards.add(battlepoint.point2_cards[i])
+                    self.main_activity.first_cards.add_card(battlepoint.point2_cards)
+                    self.main_activity.first_cards.update_hand()
+                    battlepoint.point2_cards.clear()
 
 """Классы бонусных карт Ивагакуре"""
 class HymnIva(BonusCard):
