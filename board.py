@@ -24,14 +24,14 @@ class BattlePoint(pygame.sprite.Group):
             pygame.draw.rect(screen, pygame.Color(color), point, 3)
         if self.type == 'Перевал Хорана':
             for i in range(2):
-                name = b_font2.render(self.title.split()[i], 1, pygame.Color(color))
+                name = b_font3.render(self.title.split()[i], 1, pygame.Color(color))
                 name_coord = name.get_rect()
                 name_coord.center = self.view.center
                 name_coord.y = height // 2 - 25
                 name_coord.y += 22 * i
                 screen.blit(name, name_coord)  # вывод названия Перевала Хорана
         else:
-            name = b_font4.render(self.title, 1, pygame.Color(color))
+            name = b_font5.render(self.title, 1, pygame.Color(color))
             name_coord = name.get_rect()
             name_coord.center = self.view.center
             screen.blit(name, name_coord)  # вывод названия точки

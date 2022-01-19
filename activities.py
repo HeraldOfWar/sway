@@ -116,7 +116,9 @@ class BasicActivity:
         global FRACTION
         pygame.time.wait(100)
         if view.rect == play_button or view.rect == ok_button:
-            self.next_activity.run()  # запуск следующей активности
+            if self.next_activity:
+                self.next_activity.run()  # запуск следующей активности
+            return
         if view.rect == exit_button:
             self.old_activity.run()  # запуск предыдущей активности
         if view.rect == escape_button:
@@ -222,18 +224,18 @@ class FinalActivity(BasicActivity):
             image = konoha_win
             img_rect = konoha_win.get_rect()
         elif self.result == 'iva':
-            title = b_font1.render('Ива победила!', 1, pygame.Color('black'))
+            title = b_font2.render('Ива победила!', 1, pygame.Color('black'))
             image = iva_win
             img_rect = iva_win.get_rect()
         else:
-            title = b_font1.render('Ничья!', 1, pygame.Color('black'))
+            title = b_font2.render('Ничья!', 1, pygame.Color('black'))
             image = draw_back
             img_rect = draw_back.get_rect()
         title_coords = title.get_rect()
         title_coords.centerx = screen.get_rect().centerx
-        title_coords.centery = 200
+        title_coords.centery = 220
         img_rect.centerx = screen.get_rect().centerx
-        img_rect.centery = 450
+        img_rect.centery = 500
         screen.blit(image, img_rect)
         screen.blit(title, title_coords)
 
@@ -1229,22 +1231,22 @@ class GameActivity(BasicActivity):
         if button == endstep_button1:
             for i in range(len('Конец хода'.split())):
                 if not button.is_enabled:
-                    line = b_font3.render('Конец хода'.split()[i], 1, pygame.Color('#332f2c'))
+                    line = b_font4.render('Конец хода'.split()[i], 1, pygame.Color('#332f2c'))
                 elif button.is_hovered:
-                    line = b_font3.render('Конец хода'.split()[i], 1, pygame.Color('white'))
+                    line = b_font4.render('Конец хода'.split()[i], 1, pygame.Color('white'))
                 else:
-                    line = b_font3.render('Конец хода'.split()[i], 1, pygame.Color('black'))
+                    line = b_font4.render('Конец хода'.split()[i], 1, pygame.Color('black'))
                 line_coord = line.get_rect()
                 line_coord.centerx = pygame.Rect(width - 125, height - 140, 90, 55).centerx
                 screen.blit(line, (line_coord.x, height - 135 + 20 * i))
         if button == endstep_button2:
             for i in range(len('Конец хода'.split())):
                 if not button.is_enabled:
-                    line = b_font3.render('Конец хода'.split()[i], 1, pygame.Color('#332f2c'))
+                    line = b_font4.render('Конец хода'.split()[i], 1, pygame.Color('#332f2c'))
                 elif button.is_hovered:
-                    line = b_font3.render('Конец хода'.split()[i], 1, pygame.Color('white'))
+                    line = b_font4.render('Конец хода'.split()[i], 1, pygame.Color('white'))
                 else:
-                    line = b_font3.render('Конец хода'.split()[i], 1, pygame.Color('black'))
+                    line = b_font4.render('Конец хода'.split()[i], 1, pygame.Color('black'))
                 line_coord = line.get_rect()
                 line_coord.centerx = pygame.Rect(35, 85, 90, 55).centerx
                 screen.blit(line, (line_coord.x, 90 + 20 * i))
@@ -1590,7 +1592,3 @@ class GameActivity(BasicActivity):
     def get_battlepoint_info(self, battlepoint):
         battlepoint.info_fragment.run()  # выдача информации о боевой точке
         battlepoint.update_card_draw()
-
-
-
-

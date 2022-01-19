@@ -115,8 +115,8 @@ PLAYCARDS, BONUSCARDS, OTHER_PCARDS, OTHER_BCARDS, P_SECOND_INFO, B_SECOND_INFO 
 """Инициализация шрифтов"""
 pygame.font.init()
 b_font, b_font1 = pygame.font.Font(TITLE_FONT, 70), pygame.font.Font(TITLE_FONT, 60)
-b_font2, b_font3 = pygame.font.Font(TITLE_FONT, 30), pygame.font.Font(TITLE_FONT, 26)
-b_font4 = pygame.font.Font(TITLE_FONT, 24)
+b_font2, b_font3 = pygame.font.Font(TITLE_FONT, 46), pygame.font.Font(TITLE_FONT, 30)
+b_font4, b_font5 = pygame.font.Font(TITLE_FONT, 26), pygame.font.Font(TITLE_FONT, 24)
 font, font1 = pygame.font.Font(MAIN_FONT, 14), pygame.font.Font(MAIN_FONT, 12)
 font2, font3 = pygame.font.Font(MAIN_FONT, 10), pygame.font.Font(MAIN_FONT, 8)
 
