@@ -23,10 +23,27 @@ class BasicActivity:
             self.load_ui(button)  # преобразование кнопок в ui-кнопки
         self.termination_dialog = None  # подтверждение выхода
         self.exception_msg = None  # сообщение с ошибкой
+        self.ui_technic_info, self.ui_ability_info = None, None
         self.block = False
 
     def run(self, card=None):
         """Запуск основного цикла"""
+        if card and (card in PLAYCARDS or card in OTHER_PCARDS):
+            technic_info, ability_info = card.get_abilities_info()
+            self.ui_technic_info = pygame_gui.elements.UITextBox(
+                html_text=technic_info,
+                manager=self.manager,
+                relative_rect=pygame.Rect(16, 586, 448, 100))
+            self.ui_ability_info = pygame_gui.elements.UITextBox(
+                html_text=ability_info,
+                manager=self.manager,
+                relative_rect=pygame.Rect(16, 700, 448, 140))
+        elif card and (card in BONUSCARDS or card in OTHER_BCARDS):
+            ability_info = card.get_ability_info()
+            self.ui_ability_info = pygame_gui.elements.UITextBox(
+                html_text=ability_info,
+                manager=self.manager,
+                relative_rect=pygame.Rect(16, 460, 448, 380))
         while True:  # а вот и цикл!
             for event in pygame.event.get():  # pygame ждёт, чтобы пользователь что-то сделал
                 if event.type == pygame.QUIT:  # ты куда???... (выход при нажатии на системный крестик)
@@ -120,8 +137,16 @@ class BasicActivity:
                 self.next_activity.run()  # запуск следующей активности
             return
         if view.rect == exit_button:
+            if self.ui_ability_info:
+                self.ui_ability_info.kill()
+            if self.ui_technic_info:
+                self.ui_technic_info.kill()
             self.old_activity.run()  # запуск предыдущей активности
         if view.rect == escape_button:
+            if self.ui_ability_info:
+                self.ui_ability_info.kill()
+            if self.ui_technic_info:
+                self.ui_technic_info.kill()
             self.previous_activity.run()  # запуск предыдущей активности
         if view == konohagakure:
             FRACTION = KONOHAGAKURE  # выбрана фракция Конохагакуре
@@ -279,6 +304,11 @@ class Fragment(BasicActivity):
             button.is_hovered = False
         if view.rect == ok_button and self.f_type == 'rules':
             self.next_activity.run()
+        if view == escape_button and self.f_type == 'card_info':
+            if self.ui_ability_info:
+                self.ui_ability_info.kill()
+            if self.ui_technic_info:
+                self.ui_technic_info.kill()
         return
 
     def load_rules(self, f_type):
@@ -455,11 +485,12 @@ class BattleFragment(Fragment):
                                     # режимов
                                     self.current_card.is_attacked = True  # подтверждаем, что карта уже
                                     # атаковала в этом ходу
-                                    if self.card_is_getting.short_name == 'kentaru' \
-                                            and self.card_is_getting.passive_is_used:
-                                        self.card_is_getting.kicked.sprites()[0].direction = 'left'
-                                    if self.card_is_getting.short_name == 'iketani':
-                                        self.card_is_getting.kicked.sprites()[0].direction = 'left'
+                                    if self.card_is_getting.is_alive:
+                                        if self.card_is_getting.short_name == 'kentaru' \
+                                                and self.card_is_getting.passive_is_used:
+                                            self.card_is_getting.kicked.sprites()[0].direction = 'left'
+                                        if self.card_is_getting.short_name == 'iketani':
+                                            self.card_is_getting.kicked.sprites()[0].direction = 'left'
                                 else:
                                     if self.main_activity.first_cards.get_state():
                                         point = self.battlepoint. \

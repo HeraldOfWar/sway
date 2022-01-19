@@ -118,22 +118,25 @@ class Deck(pygame.sprite.Group):
             pygame.draw.rect(screen, pygame.Color(color), endstep_button1, 3)
             """Установка колоды бонусных карт"""
             if self.fraction == KONOHAGAKURE:
-                self.konoha_bonus_rect.center = bonus_button1.center
-                screen.blit(konoha_bonus, self.konoha_bonus_rect)
+                if self.bonus_deck:
+                    self.konoha_bonus_rect.center = bonus_button1.center
+                    screen.blit(konoha_bonus, self.konoha_bonus_rect)
             else:
-                pass
-                self.iva_bonus_rect.center = bonus_button1.center
-                screen.blit(iva_bonus, self.iva_bonus_rect)
+                if self.bonus_deck:
+                    self.iva_bonus_rect.center = bonus_button1.center
+                    screen.blit(iva_bonus, self.iva_bonus_rect)
         else:
             pygame.draw.rect(screen, pygame.Color(color), (124, 5, 231, 135), 3)
             pygame.draw.rect(screen, pygame.Color(color), (35, 5, 90, 135), 3)
             pygame.draw.rect(screen, pygame.Color(color), endstep_button2, 3)
             if self.fraction == KONOHAGAKURE:
-                self.konoha_bonus_rect.center = bonus_button2.center
-                screen.blit(konoha_bonus, self.konoha_bonus_rect)
+                if self.bonus_deck:
+                    self.konoha_bonus_rect.center = bonus_button2.center
+                    screen.blit(konoha_bonus, self.konoha_bonus_rect)
             else:
-                self.iva_bonus_rect.center = bonus_button2.center
-                screen.blit(iva_bonus, self.iva_bonus_rect)
+                if self.bonus_deck:
+                    self.iva_bonus_rect.center = bonus_button2.center
+                    screen.blit(iva_bonus, self.iva_bonus_rect)
 
         """Вывод изображения текущей карты"""
         if self.hand:
@@ -181,7 +184,10 @@ class Deck(pygame.sprite.Group):
         """Добавление карт в руку"""
         for card in cards:
             card.point = self
-            self.hand.insert(self.current, card)
+            if len(self.hand) > 0:
+                self.hand.insert(self.current, card)
+            else:
+                self.hand.append(card)
 
     def set_state(self, state):
         """Установка состояния игровой колоды"""

@@ -1,4 +1,6 @@
 import random
+
+import pygame_gui.elements
 from constants import *
 
 
@@ -175,12 +177,13 @@ class PlayCard(pygame.sprite.Sprite):
                         if card.name.split()[0] in self.synergy:
                             damage += 1
                     for card in self.point.point1_cards:
-                        if card.short_name == 'benkei' and not card.passive_is_used:
+                        if self.short_name != 'benkei' and card.short_name == 'benkei' and \
+                                not card.passive_is_used:
                             return damage - 2
                         if card.short_name == 'benkei' and card.passive_is_used:
                             return damage + 1
                         if card.short_name == 'hiruko' and card.himera_is_used:
-                            if card.himera_card.short_name == 'benkei' and \
+                            if self.short_name != 'hiruko' and card.himera_card.short_name == 'benkei' and \
                                     not card.himera_card.passive_is_used:
                                 return damage - 2
                             if card.himera_card.short_name == 'benkei' and card.himera_card.passive_is_used:
@@ -192,12 +195,13 @@ class PlayCard(pygame.sprite.Sprite):
                         if card.name.split()[0] in self.synergy:
                             damage += 1
                     for card in self.point.point2_cards:
-                        if card.short_name == 'benkei' and not card.passive_is_used:
+                        if self.short_name != 'benkei' and card.short_name == 'benkei' and \
+                                not card.passive_is_used:
                             return damage - 2
                         if card.short_name == 'benkei' and card.passive_is_used:
                             return damage + 1
                         if card.short_name == 'hiruko' and card.himera_is_used:
-                            if card.himera_card.short_name == 'benkei' and \
+                            if self.short_name != 'hiruko' and card.himera_card.short_name == 'benkei' and \
                                     not card.himera_card.passive_is_used:
                                 return damage - 2
                             if card.himera_card.short_name == 'benkei' and card.himera_card.passive_is_used:
@@ -274,28 +278,6 @@ class PlayCard(pygame.sprite.Sprite):
             synergy = font.render(f'Синергия: {", ".join(self.synergy)}', 1, pygame.Color('black'))
         synergy_coord = synergy.get_rect()
         synergy_coord.center = pygame.Rect((238, 536, 233, 46)).center
-        technic = b_font4.render('Техника:', 1, pygame.Color('black'))
-        passive_ability = b_font4.render('Пассивная способность:', 1, pygame.Color('black'))
-        old_technic_info, old_passive_ability_info = P_SECOND_INFO[self.id - 1][0][0], \
-                                                     P_SECOND_INFO[self.id - 1][0][1]
-        technic_info1, passive_ability_info1 = '', ''
-        technic_info, passive_ability_info = [], []
-
-        for i in range(len(old_technic_info)):  # разделение описания техники по строкам
-            technic_info1 += old_technic_info[i]
-            if len(technic_info1) % 57 == 0:
-                technic_info.append(technic_info1.strip())
-                technic_info1 = ''
-            elif i == len(old_technic_info) - 1:
-                technic_info.append(technic_info1.strip())
-
-        for i in range(len(old_passive_ability_info)):  # разделение описания пассивной способности по строкам
-            passive_ability_info1 += old_passive_ability_info[i]
-            if len(passive_ability_info1) % 57 == 0:
-                passive_ability_info.append(passive_ability_info1.strip())
-                passive_ability_info1 = ''
-            elif i == len(old_passive_ability_info) - 1:
-                passive_ability_info.append(passive_ability_info1.strip())
 
         "Вывод всей информации в окне"
         screen.blit(self.info_image, img_coord)
@@ -306,16 +288,10 @@ class PlayCard(pygame.sprite.Sprite):
         screen.blit(health, health_coord)
         screen.blit(damage, damage_coord)
         screen.blit(synergy, synergy_coord)
-        screen.blit(technic, (16, 586))
-        screen.blit(passive_ability, (16, 700))
-        for i in range(len(technic_info)):  # построчный вывод описания техники
-            line = font2.render(technic_info[i], 1, pygame.Color('black'))
-            y = 615 + 20 * i
-            screen.blit(line, (16, y))
-        for i in range(len(passive_ability_info)):  # посторочный вывод описания пассивной способности
-            line = font2.render(passive_ability_info[i], 1, pygame.Color('black'))
-            y = 729 + 20 * i
-            screen.blit(line, (16, y))
+
+    def get_abilities_info(self):
+        return '<b>Техника:</b><br />' + P_SECOND_INFO[self.id - 1][0][0], \
+               '<b>Пассивная способность:</b><br />' + P_SECOND_INFO[self.id - 1][0][1]
 
     def death(self):
         """Создание осколков для разрушения карты"""
@@ -393,24 +369,13 @@ class BonusCard(pygame.sprite.Sprite):
         title_coord = title.get_rect()
         title_coord.center = pygame.Rect((8, 404, 465, 52)).center
         ability = b_font3.render('Эффект:', 1, pygame.Color('black'))
-        old_ability_info = B_SECOND_INFO[self.id - 1][0][0]
-        ability_info1, ability_info = '', []
-
-        for i in range(len(old_ability_info)):
-            ability_info1 += old_ability_info[i]
-            if len(ability_info1) % 40 == 0:
-                ability_info.append(ability_info1.strip())
-                ability_info1 = ''
-            elif i == len(old_ability_info) - 1:
-                ability_info.append(ability_info1.strip())
+        ability_info = B_SECOND_INFO[self.id - 1][0][0]
 
         screen.blit(self.image, img_coord)
         screen.blit(title, title_coord)
-        screen.blit(ability, (18, 462))
-        for i in range(len(ability_info)):
-            line = font.render(ability_info[i], 1, pygame.Color('black'))
-            y = 500 + 22 * i
-            screen.blit(line, (16, y))
+
+    def get_ability_info(self):
+        return '<b>Эффект:</b><br />' + B_SECOND_INFO[self.id - 1][0][0]
 
     def __str__(self):
         return self.name
@@ -1052,7 +1017,7 @@ class Akito(PlayCard):
 class Ryu(PlayCard):
 
     def get_ability(self):
-        if not self.is_attacked and not self.passive_is_used:
+        if not self.passive_is_used:
             if self.fraction == self.groups()[0].main_fraction:
                 if len(self.point.point2_cards) > 0:
                     return True
