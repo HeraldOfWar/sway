@@ -16,7 +16,8 @@ clock = pygame.time.Clock()  # объект часов для управлени
 """Пути к ресурсам"""
 DATABASE = os.path.join('data', 'card_db.db')  # база данных
 FONTS = os.path.join('resources', 'fonts')  # шрифты
-TITLE_FONT = os.path.join(FONTS, 'rusmadeinchinav2.ttf')  # заголовок
+TITLE_FONT = os.path.join(FONTS, 'Gang of Three.ttf')  # заголовок
+GAME_FONT = os.path.join(FONTS, 'rusmadeinchinav2.ttf')
 MAIN_FONT = os.path.join(FONTS, 'HanZi.ttf')  # основной текст
 CARDS = os.path.join('resources', 'cards')  # изображения карт
 BACK_N_BUT = os.path.join('resources', 'back_and_buttons')  # фоны и кнопки
@@ -101,7 +102,7 @@ point4, point5, point6 = Button(58, 150, 120, 175), Button(180, 150, 120, 175), 
 b_points = [exit_button, point1, point2, point3, point4, point5, point6]  # список позиций на боевой точке
 
 """Выгрузка данных из БД"""
-connect = sqlite3.connect(DATABASE)
+connect = sqlite3.connect(DATABASE)  # открытие БД
 cursor = connect.cursor()
 PLAYCARDS_DATA = cursor.execute("""SELECT id, fraction, name, short_name, specialization, pace, chakra, 
                         resistance, health, technic, synergy FROM playcards""")  # данные об игровых картах
@@ -109,14 +110,15 @@ PLAYCARDS_DATA = [list(i) for i in PLAYCARDS_DATA]
 BONUSCARDS_DATA = cursor.execute("""SELECT id, fraction, name, short_name 
                                     FROM bonuscards""")  # данные о бонусных картах
 BONUSCARDS_DATA = [list(i) for i in BONUSCARDS_DATA]
-connect.close()
+connect.close()  # закрытие БД
 PLAYCARDS, BONUSCARDS, OTHER_PCARDS, OTHER_BCARDS, P_SECOND_INFO, B_SECOND_INFO = [], [], [], [], [], []
 
 """Инициализация шрифтов"""
 pygame.font.init()
-b_font, b_font1 = pygame.font.Font(TITLE_FONT, 70), pygame.font.Font(TITLE_FONT, 60)
-b_font2, b_font3 = pygame.font.Font(TITLE_FONT, 46), pygame.font.Font(TITLE_FONT, 30)
-b_font4, b_font5 = pygame.font.Font(TITLE_FONT, 26), pygame.font.Font(TITLE_FONT, 24)
+b_font, b_font1 = pygame.font.Font(TITLE_FONT, 60), pygame.font.Font(TITLE_FONT, 50)
+b_font2, b_font3 = pygame.font.Font(TITLE_FONT, 30), pygame.font.Font(TITLE_FONT, 22)
+g_font, g_font1 = pygame.font.Font(GAME_FONT, 60), pygame.font.Font(GAME_FONT, 30)
+g_font2, g_font3 = pygame.font.Font(GAME_FONT, 26), pygame.font.Font(GAME_FONT, 24)
 font, font1 = pygame.font.Font(MAIN_FONT, 14), pygame.font.Font(MAIN_FONT, 12)
 font2, font3 = pygame.font.Font(MAIN_FONT, 10), pygame.font.Font(MAIN_FONT, 8)
 

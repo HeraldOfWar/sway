@@ -9,29 +9,29 @@ class BattlePoint(pygame.sprite.Group):
     def __init__(self, view, score):
         """Инициализация боевой точки"""
         super().__init__()
-        self.view = view  # вид боевой точки на игровом поле
+        self.view = view  # кнопка боевой точки на игровом поле
         self.score = score  # количество ОЗ, которое генерируется точкой
         self.points, self.first_points, self.second_points = [], [], []  # позиции на боевой точке
         self.title, self.type = '', ''  # название и тип
         self.point1_cards, self.point2_cards = [], []  # список союзных и вражеских карт на точке
         self.info_fragment = BattleFragment('battlepoint', basic_back, b_points,
                                             self)  # фрагмент с информацией о точке
-        self.is_under = None
+        self.is_under = None  # контролирующая фракция
 
     def output(self, color):
         """Отрисовка боевой точки"""
-        for point in self.points:  # отрисовка всех точек
+        for point in self.points:  # отрисовка всех позиций
             pygame.draw.rect(screen, pygame.Color(color), point, 3)
         if self.type == 'Перевал Хорана':
             for i in range(2):
-                name = b_font3.render(self.title.split()[i], 1, pygame.Color(color))
+                name = g_font1.render(self.title.split()[i], 1, pygame.Color(color))
                 name_coord = name.get_rect()
                 name_coord.center = self.view.center
                 name_coord.y = height // 2 - 25
                 name_coord.y += 22 * i
                 screen.blit(name, name_coord)  # вывод названия Перевала Хорана
         else:
-            name = b_font5.render(self.title, 1, pygame.Color(color))
+            name = g_font3.render(self.title, 1, pygame.Color(color))
             name_coord = name.get_rect()
             name_coord.center = self.view.center
             screen.blit(name, name_coord)  # вывод названия точки
@@ -39,8 +39,8 @@ class BattlePoint(pygame.sprite.Group):
 
     def update_points(self):
         """Обновление союзных и вражеских позиций"""
-        self.first_points = [point1, point2, point3]
-        self.second_points = [point4, point5, point6]
+        self.first_points = [point1, point2, point3]  # позиции для первого игрока
+        self.second_points = [point4, point5, point6]  # для второго игрока
 
     def update_card_draw(self):
         """Обновление позиций и размеров карт под игровое поле"""
@@ -85,7 +85,7 @@ class BattlePoint(pygame.sprite.Group):
     def battle(friend, enemy):
         """Сражение между картами"""
         friend.attack(enemy)  # сначала атакует первая
-        if enemy.is_alive:
+        if enemy.is_alive and (enemy.point == friend.point):
             enemy.attack(friend)  # а потом вторая, если выжила
 
 
@@ -138,7 +138,7 @@ class Deck(pygame.sprite.Group):
                     self.iva_bonus_rect.center = bonus_button2.center
                     screen.blit(iva_bonus, self.iva_bonus_rect)
 
-        """Вывод изображения текущей карты"""
+        """Вывод изображения текущей карты в руке"""
         if self.hand:
             if self.current > len(self.hand) - 1:
                 self.current = len(self.hand) - 1
@@ -159,12 +159,12 @@ class Deck(pygame.sprite.Group):
                 screen.blit(line, (width - 118, height - 75 + 22 * i))
 
     def update_pace(self):
-        """Обновление """
+        """Обновление скорости для всех союзных карт"""
         for card in self.sprites():
             card.update_pace()
 
     def set_hand(self):
-        """Заполнение руки всеми картами доступными картами"""
+        """Заполнение руки всеми доступными картами"""
         self.hand = self.sprites()
 
     def update_hand(self):
@@ -236,7 +236,7 @@ class Deck(pygame.sprite.Group):
 
     def get_bonus(self):
         """Выпадение бонусной карты"""
-        card = random.choice(self.bonus_deck.sprites())
-        card.bonus()
+        card = random.choice(self.bonus_deck.sprites())  # случайный выбор карты из колоды
+        card.bonus()  # активация эффекта карты
         self.bonus_deck.remove(card)
         return card

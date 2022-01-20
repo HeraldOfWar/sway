@@ -29,7 +29,7 @@ def game_init():
                 battlefields[i].points.append(pygame.Rect(30 + 40 * j + 150 * (i % 3), 644, 40, 35))
             for j in range(3):  # вражеские позиции
                 battlefields[i].points.append(pygame.Rect(30 + 40 * j + 150 * (i % 3), 559, 40, 35))
-            battlefields[i].update_points()
+            battlefields[i].update_points()  # обновляем позиции и фон
             battlefields[i].info_fragment.background = load_image(BACK_N_BUT, f'konoha_pass{i + 1}.jpg')
         elif i > 5:
             battlefields[i].title = f'Перевал {i - 2}'
@@ -104,17 +104,17 @@ def game_init():
     other_bcards = [i_leave]
 
     """Создание всех окон (активностей и фрагментов)"""
-    rules = Fragment('rules', rules_back, buttons=[ok_button])
-    cf_activity = BasicActivity(cf_back, sprites=cf_sprites, old_activity=rules)
+    rules = Fragment('rules', rules_back, buttons=[ok_button])  # правила (активность)
+    cf_activity = BasicActivity(cf_back, sprites=cf_sprites, old_activity=rules)  # меню выбора фракции
     info_activity = BasicActivity(basic_back, buttons=[exit_button], sprites=info_sprites,
-                                  old_activity=cf_activity)
+                                  old_activity=cf_activity)  # просмотр информации о картах
     card_info_activity = BasicActivity(basic_back, buttons=[escape_button, exit_button],
-                                       old_activity=cf_activity)
-    main_menu = MenuFragment('menu', basic_back, buttons=menu_buttons)
-    new_rules = Fragment('rules1', basic_back, buttons=[escape_button])
-    basic_help = Fragment('help', rules_back, buttons=[ok_button])
-    new_basic_help = Fragment('help1', basic_back, buttons=[escape_button])
-    card_info_fragment = Fragment('card_info', basic_back, buttons=[escape_button])
+                                       old_activity=cf_activity)  # активность с информацией о данной карте
+    main_menu = MenuFragment('menu', basic_back, buttons=menu_buttons)  # главное меню
+    new_rules = Fragment('rules1', basic_back, buttons=[escape_button])  # правила (фрагмент)
+    basic_help = Fragment('help', rules_back, buttons=[ok_button])  # справка (фрагмент 1)
+    new_basic_help = Fragment('help1', basic_back, buttons=[escape_button])  # справка (фрагмент 2)
+    card_info_fragment = Fragment('card_info', basic_back, buttons=[escape_button])  # список фрагментов
     fragments = [main_menu, new_rules, basic_help, card_info_fragment, new_basic_help]
     game_activity = GameActivity(k_battlefield, buttons=game_buttons,
                                  decks=[konoha_deck, iva_deck],
@@ -178,8 +178,11 @@ def game_init():
         OTHER_BCARDS.append(card)
         card.main_activity = game_activity
 
+    """Передача игровой активности всем боевым точкам"""
+    for point in battlefields:
+        point.info_fragment.main_activity = game_activity
 
-    connect = sqlite3.connect(DATABASE)
+    connect = sqlite3.connect(DATABASE)  # открытие базы данных
     cursor = connect.cursor()
     """Заполнение списка описаний техник и способностей игровых карт"""
     for card in PLAYCARDS:
@@ -203,7 +206,7 @@ def game_init():
         second_info = cursor.execute(f"""SELECT ability_info FROM bonuscards WHERE id = '{card.id}'""")
         second_info = [list(i) for i in second_info]
         B_SECOND_INFO.append(second_info)
-    connect.close()
+    connect.close()  # закрытие базы данных
 
 
 def main():
