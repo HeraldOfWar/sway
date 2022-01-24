@@ -121,7 +121,7 @@ connect.close()  # закрытие БД
 PLAYCARDS, BONUSCARDS, OTHER_PCARDS, OTHER_BCARDS, P_SECOND_INFO, B_SECOND_INFO = [], [], [], [], [], []
 
 """Инициализация шрифтов"""
-pygame.font.init()
+pygame.font.init()  # инициализация шрифтов
 b_font, b_font1 = pygame.font.Font(TITLE_FONT, 60), pygame.font.Font(TITLE_FONT, 50)
 b_font2, b_font3 = pygame.font.Font(TITLE_FONT, 30), pygame.font.Font(TITLE_FONT, 22)
 g_font, g_font1 = pygame.font.Font(GAME_FONT, 60), pygame.font.Font(GAME_FONT, 30)
@@ -143,14 +143,20 @@ with open(os.path.join('data', 'help.txt'), encoding='utf8') as helps:
 help_txt = ' '.join(help_txt)
 
 """Инициализация аудио"""
-pygame.mixer.init()
-basic_music = ['basic.mp3', 'basic1.mp3', 'basic2.mp3', 'basic3.mp3']
-game_music = ['game.mp3', 'game1.mp3', 'game2.mp3']
-battle_music = ['battle.mp3', 'battle1.mp3']
+pygame.mixer.init()  # инициализация микшера
+basic_music = ['basic.mp3', 'basic1.mp3', 'basic2.mp3', 'basic3.mp3']  # фоновая музыка в меню
+game_music = ['game.mp3', 'game1.mp3', 'game2.mp3']  # фоновая музыка в игре
+battle_music = ['battle.mp3', 'battle1.mp3']  # фоновая музыка на боевых точках
+"""Аудио-события"""
+# выбор Конохагакуре
 choose_konoha_sounds = [load_sound(GAME_EVENTS, 'konoha.wav'), load_sound(GAME_EVENTS, 'konoha1.wav')]
+# выбор Ивагакуре
 choose_iva_sounds = [load_sound(GAME_EVENTS, 'iva.wav'), load_sound(GAME_EVENTS, 'iva1.wav')]
-konoha_lead = load_sound(GAME_EVENTS, 'konoha_lead.wav')
-iva_lead = load_sound(GAME_EVENTS, 'iva_lead.wav')
-konoha_win_sound = load_sound(GAME_EVENTS, 'konoha_win.wav')
-iva_win_sound = load_sound(GAME_EVENTS, 'iva_win.wav')
-draw_sound = load_sound(GAME_EVENTS, 'draw.wav')
+konoha_lead = load_sound(GAME_EVENTS, 'konoha_lead.wav')  # Конохагакуре лидирует
+iva_lead = load_sound(GAME_EVENTS, 'iva_lead.wav')  # Ивагакуре лидирует
+konoha_win_sound = load_sound(GAME_EVENTS, 'konoha_win.wav')  # победа Конохагакуре
+iva_win_sound = load_sound(GAME_EVENTS, 'iva_win.wav')  # победа Ивагакуре
+draw_sound = load_sound(GAME_EVENTS, 'draw.wav')  # ничья
+
+# пользовательское событие, которое срабатывает, когда заканчивается музыка
+MUSIC_END = pygame.USEREVENT + 1

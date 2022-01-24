@@ -224,22 +224,21 @@ def game_init():
     """Инициализация аудио"""
     random.shuffle(basic_music)
     load_music(BACK_MUSIC, basic_music[0])
-    for music in basic_music[1:]:
-        add_music(BACK_MUSIC, music)
+    add_music(BACK_MUSIC, basic_music[1])
 
 
 def main():
     """Начинаем!"""
     game_init()  # инициализация всех объектов
-    pygame.mixer.music.play()
-    pygame.mixer.music.set_volume(MAIN_VOLUME)
+    pygame.mixer.music.play()  # запуск фоновой музыки
+    pygame.mixer.music.set_volume(MAIN_VOLUME)  # установка громкости фоновой музыки
     start_activity.run()  # отрисовка стартового окна
     return main()  # надо сыграть ещё раз...
 
 
 if __name__ == '__main__':
     pygame.init()  # инициализация pygame
-    pygame.display.set_icon(icon)
+    pygame.display.set_icon(icon)  # установка иконки игры
     pygame.display.set_caption('SWAY')  # установка названия
 
     start_activity = BasicActivity(start_back, buttons=[play_button])  # стартовое окно

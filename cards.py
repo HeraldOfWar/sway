@@ -40,9 +40,9 @@ class PlayCard(pygame.sprite.Sprite):
         if self.groups():
             self.point = self.groups()[0]  # в начале игры это база ("рука")
         self.pieces = pygame.sprite.Group()  # "куски" карты (для уничтожения)
-        self.sounds = []
-        self.attack_sounds = []
-        self.death_sounds = []
+        self.sounds = []  # озвучка появления/выхода
+        self.attack_sounds = []  # озвучка атаки
+        self.death_sounds = []  # озвучка смерти
 
     def can_attack(self):
         """Проверка на возможность атаковать противника"""
@@ -361,7 +361,7 @@ class BonusCard(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.is_enabled = True
         self.main_activity = None  # главная игровая активность
-        self.sounds = []
+        self.sounds = []  # озвучка появления
 
     def bonus(self):
         """Активация эффекта бонусной карты"""

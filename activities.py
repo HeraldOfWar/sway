@@ -3,8 +3,6 @@ import numpy
 from system_func import terminate
 from constants import *
 
-MUSIC_END = pygame.USEREVENT + 1
-
 
 class BasicActivity:
     """Класс стандартного окна (активности)"""
@@ -28,8 +26,8 @@ class BasicActivity:
         self.exception_msg = None  # сообщение с ошибкой
         self.ui_technic_info, self.ui_ability_info = None, None  # информация о способностях карты
         self.is_blocked = False  # состояние активности (блокировка)
-        self.channel = None
-        self.is_active = True
+        self.channel = None  # звуковой канал
+        self.is_active = True # активно ли окно?
 
     def run(self, card=None):
         """Запуск основного цикла"""
@@ -44,10 +42,10 @@ class BasicActivity:
                 html_text=ability_info,
                 manager=self.manager,
                 relative_rect=pygame.Rect(16, 700, 448, 140))
-            if card.get_sound():
-                pygame.mixer.music.pause()
-                self.channel = card.get_sound().play()
-                self.channel.set_endevent(MUSIC_END)
+            if card.get_sound():  # если у карты есть озвучка
+                pygame.mixer.music.pause()  # останавливаем фоновую музыку
+                self.channel = card.get_sound().play()  # запускаем озвучку
+                self.channel.set_endevent(MUSIC_END)  # и добавляем событие по её окончании
         elif card and (card in BONUSCARDS or card in OTHER_BCARDS):
             ability_info = card.get_ability_info()
             self.ui_ability_info = pygame_gui.elements.UITextBox(
@@ -64,13 +62,13 @@ class BasicActivity:
                     if not self.is_blocked:
                         if card:
                             if self.channel:
-                                self.channel.stop()
-                                pygame.mixer.music.unpause()
+                                self.channel.stop()  # остановка озвучки
+                                pygame.mixer.music.unpause()  # продолжение музыки
                             if self.old_activity:
                                 return self.old_activity.run()
                         self.get_quit()
-                elif event.type == MUSIC_END:
-                    pygame.mixer.music.unpause()
+                elif event.type == MUSIC_END:  # если озвучка закончилась
+                    pygame.mixer.music.unpause()  # фоновая музыка продолжается
                 elif event.type == pygame.USEREVENT:  # проверка событий, связанных с ui-элементами
                     if event.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:  # подтверждение
                         terminate()  # выход
@@ -284,7 +282,8 @@ class BasicActivity:
             self.fragments[2].run()
 
     def get_quit(self):
-        self.get_main_menu()
+        """Реакция на попытку выхода"""
+        self.get_main_menu()  # выдача главного меню
 
 
 class FinalActivity(BasicActivity):
@@ -317,6 +316,10 @@ class FinalActivity(BasicActivity):
         img_rect.centery = 500
         screen.blit(image, img_rect)  # выводим нужное изображение
         screen.blit(title, title_coords)  # и текст
+
+    def get_quit(self):
+        """Реакция на попытку выйти"""
+        self.get_termination_dialog()  # подтверждение выхода
 
 
 class Fragment(BasicActivity):
@@ -405,9 +408,9 @@ class MenuFragment(Fragment):
         self.load_ui_volume()
 
     def run(self, card=None):
+        """Запуск основного цикла"""
         global MAIN_VOLUME
         global CARD_VOLUME
-        """Запуск основного цикла"""
         while True:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -427,11 +430,11 @@ class MenuFragment(Fragment):
                             if event.ui_element == self.termination_dialog.cancel_button or \
                                     event.ui_element == self.termination_dialog.close_window_button:
                                 self.unblock_activity()
-                        if self.main_volume:
+                        if self.main_volume:  # изменение громкости фоновой музыки
                             if event.ui_element == self.main_volume.sliding_button:
                                 MAIN_VOLUME = round(self.main_volume.get_current_value(), 2)
                                 pygame.mixer.music.set_volume(MAIN_VOLUME)
-                        if self.card_volume:
+                        if self.card_volume:  # изменение громкости звуковых эффектов
                             if event.ui_element == self.card_volume.sliding_button:
                                 CARD_VOLUME = round(self.card_volume.get_current_value(), 2)
                 elif event.type == pygame.KEYDOWN:
@@ -502,16 +505,17 @@ class MenuFragment(Fragment):
             self.ui_buttons.append(ui_button)
 
     def load_ui_volume(self):
+        """Загрузка шкал громкости"""
         self.main_volume = pygame_gui.elements.UIHorizontalSlider(
             relative_rect=pygame.Rect(90, 240, 300, 30),
             manager=self.manager,
             start_value=0.5,
-            value_range=[i / 1 for i in range(11)])
+            value_range=[i / 1 for i in range(11)])  # фоновая музыка
         self.card_volume = pygame_gui.elements.UIHorizontalSlider(
             relative_rect=pygame.Rect(90, 335, 300, 30),
             manager=self.manager,
             start_value=0.7,
-            value_range=[i / 1 for i in range(11)])
+            value_range=[i / 1 for i in range(11)])  # звуковые эффекты
 
     def mouse_click(self, view):
         """Обработка нажатия клавиши мыши"""
@@ -735,7 +739,7 @@ class BattleFragment(Fragment):
                                     else:
                                         self.set_static_mode()
                                         self.set_attack_mode()  # установка состояние атаки
-                                        if self.current_card.get_attack_sound():
+                                        if self.current_card.get_attack_sound():  # запуск озвучки
                                             self.channel = self.current_card.get_attack_sound().play()
                                             self.channel.set_volume(CARD_VOLUME)
                                 elif event.text == 'Вылечить':  # переход в состояние поддержки
@@ -831,8 +835,8 @@ class BattleFragment(Fragment):
                                 if button.collidepoint(event.pos) and button.is_enabled:
                                     self.mouse_click(button)
                     self.manager.process_events(event)
-                except AttributeError:
-                    pass
+                except AttributeError:  # активные действия во время исполнения озвучки карты могут привести
+                    pass  # к AttributeError, поэтому игнорируем их
             self.manager.update(FPS)
             self.output()
             self.manager.draw_ui(screen)
@@ -1281,12 +1285,11 @@ class GameActivity(BasicActivity):
         self.second_cards.set_state(False)  # сначала ходит 1 игрок!
         self.first_cards.set_hand()  # заполняем руку (1 игрок)
         self.second_cards.set_hand()  # заполняем руку (2 игрок)
-        pygame.mixer.music.unload()
-        random.shuffle(game_music)
+        pygame.mixer.music.unload()  # выгружаем предыдущую фоновую музыку
+        random.shuffle(game_music)  # и загружаем игровую фоновую музыку
         load_music(BACK_MUSIC, game_music[0])
-        for music in game_music[1:]:
-            add_music(BACK_MUSIC, music)
-        pygame.mixer.music.play()
+        add_music(BACK_MUSIC, game_music[1])
+        pygame.mixer.music.play()  # запуск
         self.get_help()  # сначала читаем о том, куда и когда нажимать!
         for deck in self.decks:
             deck.update_hand()  # загрузка карт в руке
@@ -1333,15 +1336,15 @@ class GameActivity(BasicActivity):
                                             if self.card_is_moving in self.first_cards.hand:
                                                 self.card_is_moving.move(self.first_cards,
                                                                          self.battlepoint_is_getting)
-                                                if self.card_is_moving.get_sound():
+                                                if self.card_is_moving.get_sound():  # запуск озвучки
                                                     self.channel = self.card_is_moving.get_sound().play()
-                                                    self.channel.set_volume(CARD_VOLUME)
+                                                    self.channel.set_volume(CARD_VOLUME)  # установка громкости
                                             elif self.card_is_moving in self.second_cards.hand:
                                                 self.card_is_moving.move(self.second_cards,
                                                                          self.battlepoint_is_getting)
-                                                if self.card_is_moving.get_sound():
+                                                if self.card_is_moving.get_sound():  # запуск озвучки
                                                     self.channel = self.card_is_moving.get_sound().play()
-                                                    self.channel.set_volume(CARD_VOLUME)
+                                                    self.channel.set_volume(CARD_VOLUME)  # установка громкости
                                             else:
                                                 for battlepoint in self.battlepoints:
                                                     if self.card_is_moving in battlepoint:
