@@ -102,26 +102,37 @@ def game_init():
     i_leave = cards.I_leave(f'{BONUSCARDS_DATA[10][3]}.jpg', BONUSCARDS_DATA[10])
     other_pcards = [iketani, jerry, kubi, vashte, clone1, clone2, clone3, clone4]
     other_bcards = [i_leave]
+    kubi.sounds = [load_sound(C_VOICES, 'kubi.wav'), load_sound(C_VOICES, 'kubi1.wav')]
+    vashte.sounds = [load_sound(C_VOICES, 'vashte.wav')]
+    clone1.sounds, clone2.sounds = keiko.sounds, keiko.sounds
+    clone3.sounds, clone4.sounds = keiko.sounds, keiko.sounds
+    clone1.attack_sounds, clone2.attack_sounds = keiko.attack_sounds, keiko.attack_sounds
+    clone3.attack_sounds, clone4.attack_sounds = keiko.attack_sounds, keiko.attack_sounds
+    clone1.death_sounds, clone2.death_sounds = keiko.death_sounds, keiko.death_sounds
+    clone3.death_sounds, clone4.death_sounds = keiko.death_sounds, keiko.death_sounds
+    i_leave.sounds = [load_sound(C_VOICES, 'i_leave.wav')]
 
     """Создание всех окон (активностей и фрагментов)"""
-    rules = Fragment('rules', rules_back, buttons=[ok_button])  # правила (активность)
-    cf_activity = BasicActivity(cf_back, sprites=cf_sprites, old_activity=rules)  # меню выбора фракции
-    info_activity = BasicActivity(basic_back, buttons=[exit_button], sprites=info_sprites,
-                                  old_activity=cf_activity)  # просмотр информации о картах
-    card_info_activity = BasicActivity(basic_back, buttons=[escape_button, exit_button],
-                                       old_activity=cf_activity)  # активность с информацией о данной карте
     main_menu = MenuFragment('menu', basic_back, buttons=menu_buttons)  # главное меню
     new_rules = Fragment('rules1', basic_back, buttons=[escape_button])  # правила (фрагмент)
     basic_help = Fragment('help', rules_back, buttons=[ok_button])  # справка (фрагмент 1)
     new_basic_help = Fragment('help1', basic_back, buttons=[escape_button])  # справка (фрагмент 2)
     card_info_fragment = Fragment('card_info', basic_back, buttons=[escape_button])  # список фрагментов
     fragments = [main_menu, new_rules, basic_help, card_info_fragment, new_basic_help]
+    rules = Fragment('rules', rules_back, buttons=[ok_button], fragments=fragments)  # правила (активность)
+    cf_activity = BasicActivity(cf_back, sprites=cf_sprites,
+                                old_activity=rules, fragments=fragments)  # меню выбора фракции
+    info_activity = BasicActivity(basic_back, buttons=[exit_button], sprites=info_sprites, fragments=fragments,
+                                  old_activity=cf_activity)  # просмотр информации о картах
+    card_info_activity = BasicActivity(basic_back, buttons=[escape_button, exit_button], fragments=fragments,
+                                       old_activity=cf_activity)  # активность с информацией о данной карте
     game_activity = GameActivity(k_battlefield, buttons=game_buttons,
                                  decks=[konoha_deck, iva_deck],
                                  battlepoints=battlefields,
                                  fragments=fragments)  # главная игровая активность
     """Настройка навигации"""
     start_activity.next_activity = rules
+    start_activity.fragments = fragments
     rules.old_activity = start_activity
     rules.next_activity = cf_activity
     cf_activity.next_activity = info_activity
@@ -130,6 +141,8 @@ def game_init():
     card_info_activity.previous_activity = info_activity
     for fragment in fragments:
         fragment.main_activity = game_activity
+    for fragment in fragments[1:]:
+        fragment.fragments = fragments
 
     """Инициализация спрайтов в окне выбора фракции"""
     konohagakure.image, ivagakure.image = load_image(BACK_N_BUT, 'konoha_background.jpg'), \
@@ -208,10 +221,18 @@ def game_init():
         B_SECOND_INFO.append(second_info)
     connect.close()  # закрытие базы данных
 
+    """Инициализация аудио"""
+    random.shuffle(basic_music)
+    load_music(BACK_MUSIC, basic_music[0])
+    for music in basic_music[1:]:
+        add_music(BACK_MUSIC, music)
+
 
 def main():
     """Начинаем!"""
     game_init()  # инициализация всех объектов
+    pygame.mixer.music.play()
+    pygame.mixer.music.set_volume(MAIN_VOLUME)
     start_activity.run()  # отрисовка стартового окна
     return main()  # надо сыграть ещё раз...
 

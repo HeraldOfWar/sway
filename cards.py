@@ -40,6 +40,9 @@ class PlayCard(pygame.sprite.Sprite):
         if self.groups():
             self.point = self.groups()[0]  # в начале игры это база ("рука")
         self.pieces = pygame.sprite.Group()  # "куски" карты (для уничтожения)
+        self.sounds = []
+        self.attack_sounds = []
+        self.death_sounds = []
 
     def can_attack(self):
         """Проверка на возможность атаковать противника"""
@@ -299,6 +302,10 @@ class PlayCard(pygame.sprite.Sprite):
             for y in range(0, self.rect.height, self.rect.height // 5):
                 piece = CardPiece(self.image, (self.rect.x, self.rect.y), x, y, random.choice(range(-5, 6)),
                                   random.choice(range(-5, 10)), self.pieces)
+        if self.death_sounds:
+            my_sound = random.choice(self.death_sounds)
+            self.point.info_fragment.channel = my_sound.play()
+            self.point.info_fragment.channel.set_volume(CARD_VOLUME)
 
     def update(self):
         """Анимация тряски"""
@@ -323,6 +330,18 @@ class PlayCard(pygame.sprite.Sprite):
             return 'ready'
         return
 
+    def get_sound(self):
+        if self.sounds:
+            my_sound = random.choice(self.sounds)
+            return my_sound
+        return None
+
+    def get_attack_sound(self):
+        if self.attack_sounds:
+            my_sound = random.choice(self.attack_sounds)
+            return my_sound
+        return None
+
     def __str__(self):
         """Представление объекта карты в виде строки"""
         return self.name
@@ -342,6 +361,7 @@ class BonusCard(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.is_enabled = True
         self.main_activity = None  # главная игровая активность
+        self.sounds = []
 
     def bonus(self):
         """Активация эффекта бонусной карты"""
@@ -378,6 +398,13 @@ class BonusCard(pygame.sprite.Sprite):
         else:  # когда карта достигнет нужной точки, выводится информация о карте
             return 'ready'
         return
+
+    def get_sound(self):
+        if self.sounds:
+            my_sound = random.choice(self.sounds)
+            my_sound.set_volume(CARD_VOLUME)
+            return my_sound
+        return None
 
     def __str__(self):
         return self.name
@@ -453,6 +480,10 @@ class Kamikaze(pygame.sprite.Sprite):
 
 class Shu(PlayCard):
     """Класс игровой карты Шу"""
+
+    def __init__(self, image, args, *group):
+        super().__init__(image, args, group)
+        self.sounds = [load_sound(C_VOICES, 'shu.wav'), load_sound(C_VOICES, 'shu1.wav')]
 
     def set_damage(self):
         """Установка урона"""
@@ -571,6 +602,7 @@ class Akemi(PlayCard):
     def __init__(self, image, args, *group):
         super().__init__(image, args, *group)
         self.enemies = []  # список врагов, получивших урон в последнем сражении
+        self.sounds = [load_sound(C_VOICES, 'akemi.wav')]
 
     def attack(self, enemy):
         """Атака"""
@@ -635,6 +667,10 @@ class Akemi(PlayCard):
 class Raik(PlayCard):
     """Класс игровой карты Райка"""
 
+    def __init__(self, image, args, *group):
+        super().__init__(image, args, group)
+        self.sounds = [load_sound(C_VOICES, 'raik.wav')]
+
     def move(self, last_point, new_point):
         """Реализация пассивной способности: Райк не тратит дополнительные очки скорости
         при перемещении с боевой точки, на которой были противники."""
@@ -676,6 +712,10 @@ class Kentaru(PlayCard):
     def __init__(self, image, args, *group):
         super().__init__(image, args, group)
         self.kicked = pygame.sprite.Group()  # группа для анимации вылетания карты
+        self.sounds = [load_sound(C_VOICES, 'kentaru.wav')]
+        self.attack_sounds = [load_sound(C_VOICES, 'attack_kentaru.wav'),
+                              load_sound(C_VOICES, 'attack_kentaru1.wav')]
+        self.death_sounds = [load_sound(C_VOICES, 'death_kentaru.wav')]
 
     def attack(self, enemy):
         """Реализация пассивной способности: 50% шанс во время атаки
@@ -717,7 +757,12 @@ class Kentaru(PlayCard):
                         play_board[i][j].is_enabled = False
             for point in self.point.info_fragment.main_activity.battlepoints:
                 if point.view.is_enabled and point != self.point:
-                    points.append(point)
+                    if self.fraction == self.groups()[0].main_fraction:
+                        if len(point.point2_cards) < 3:
+                            points.append(point)
+                    else:
+                        if len(point.point1_cards) < 3:
+                            points.append(point)
             enemy.move(self.point, random.choice(points))  # перемещение вражеской карты на случайную точку
 
 
@@ -732,6 +777,7 @@ class Hiruko(PlayCard):
         self.himera_card = None  # карта с украденной способностью
         self.kicked = pygame.sprite.Group()
         self.kamikazes = pygame.sprite.Group()
+        self.sounds = [load_sound(C_VOICES, 'hiruko.wav'), load_sound(C_VOICES, 'hiruko1.wav')]
 
     def get_ability(self):  # основная способность доступна всего 1 раз за игру
         if self.passive_is_used1:
@@ -904,7 +950,12 @@ class Hiruko(PlayCard):
                             play_board[i][j].is_enabled = False
                 for point in self.point.info_fragment.main_activity.battlepoints:
                     if point.view.is_enabled and point != self.point:
-                        points.append(point)
+                        if self.fraction == self.groups()[0].main_fraction:
+                            if len(point.point2_cards) < 3:
+                                points.append(point)
+                        else:
+                            if len(point.point1_cards) < 3:
+                                points.append(point)
                 enemy.move(self.point, random.choice(points))  # перемещение вражеской карты на случайную точку
         if self.himera_is_used and self.himera_card.short_name == 'iketani':
             if enemy.is_alive:
@@ -929,7 +980,12 @@ class Hiruko(PlayCard):
                             play_board[i][j].is_enabled = False
                 for point in self.point.info_fragment.main_activity.battlepoints:
                     if point.view.is_enabled and point != self.point:
-                        points.append(point)
+                        if self.fraction == self.groups()[0].main_fraction:
+                            if len(point.point2_cards) < 3:
+                                points.append(point)
+                        else:
+                            if len(point.point1_cards) < 3:
+                                points.append(point)
                 enemy.move(self.point, random.choice(points))
         else:
             enemy.get_damage(self.damage, self)
@@ -946,57 +1002,6 @@ class Hiruko(PlayCard):
                     self.point.info_fragment.main_activity.card_is_moving = friend
                     self.point.info_fragment.main_activity.set_move_mode(self.point)
                     self.point.info_fragment.set_static_mode()
-
-    def set_damage(self):
-        """Установка урона"""
-        if self.spec != 'Медик':
-            damage = self.pace + self.chakra + int(self.technic[0])  # урон складывается из 3 показателей
-            if self.himera_is_used and self.himera_card.short_name == 'shu' and self.passive_is_used:
-                damage += 4
-        else:
-            damage = self.pace + self.chakra  # но не у медиков
-        if self.chakra == 0:  # если закончилась чакра
-            return 0  # карта не наносит урон
-        if self.groups():
-            if self.point != self.groups()[0]:  # если срабатывает синергия
-                if self.fraction == self.groups()[0].main_fraction:
-                    if len(self.point.point1_cards) > 1 and self.synergy == 'Все':
-                        damage += 1  # добавляем 1 к урону
-                    for card in self.point.point1_cards:
-                        if card.name.split()[0] in self.synergy:
-                            damage += 1
-                    for card in self.point.point1_cards:
-                        if self.short_name != 'benkei' and card.short_name == 'benkei' and \
-                                not card.passive_is_used:  # Бенкей ослабляет союзников
-                            return damage - 2
-                        if card.short_name == 'benkei' and card.passive_is_used:  # но с Иватой усиляет
-                            return damage + 1
-                        if card.short_name == 'hiruko' and card.himera_is_used:  # Хируко может украсть
-                            if self.short_name != 'hiruko' and card.himera_card.short_name == 'benkei' and \
-                                    not card.himera_card.passive_is_used:  # это способность у Бенкея
-                                return damage - 2
-                            if card.himera_card.short_name == 'benkei' and card.himera_card.passive_is_used:
-                                return damage + 1
-                else:
-                    if len(self.point.point2_cards) > 1 and self.synergy == 'Все':
-                        damage += 1
-                    for card in self.point.point2_cards:
-                        if card.name.split()[0] in self.synergy:
-                            damage += 1
-                    for card in self.point.point2_cards:
-                        if self.short_name != 'benkei' and card.short_name == 'benkei' and \
-                                not card.passive_is_used:
-                            return damage - 2
-                        if card.short_name == 'benkei' and card.passive_is_used:
-                            return damage + 1
-                        if card.short_name == 'hiruko' and card.himera_is_used:
-                            if self.short_name != 'hiruko' and card.himera_card.short_name == 'benkei' and \
-                                    not card.himera_card.passive_is_used:
-                                return damage - 2
-                            if card.himera_card.short_name == 'benkei' and card.himera_card.passive_is_used:
-                                return damage + 1
-        return damage  # возвращаем урон
-
 
     def get_damage(self, damage, *enemy):
         """Реализация украденной способности, связанной с получением урона"""
@@ -1142,6 +1147,13 @@ class Hiruko(PlayCard):
 class Iketani(Kentaru):
     """Класс игровой карты Икетани"""
 
+    def __init__(self, image, args, *group):
+        super().__init__(image, args, group)
+        self.sounds = [load_sound(C_VOICES, 'iketani.wav')]
+        self.attack_sounds = [load_sound(C_VOICES, 'attack_iketani.wav'),
+                              load_sound(C_VOICES, 'attack_iketani1.wav')]
+        self.death_sounds = [load_sound(C_VOICES, 'death_iketani.wav')]
+
     def attack(self, enemy):
         """Реализация пассивной способности: во время атаки Икетани со 100% вероятностью
         выбрасывает противника на случайную соседнюю точку."""
@@ -1181,7 +1193,12 @@ class Iketani(Kentaru):
                         play_board[i][j].is_enabled = False
             for point in self.point.info_fragment.main_activity.battlepoints:
                 if point.view.is_enabled and point != self.point:
-                    points.append(point)
+                    if self.fraction == self.groups()[0].main_fraction:
+                        if len(point.point2_cards) < 3:
+                            points.append(point)
+                    else:
+                        if len(point.point1_cards) < 3:
+                            points.append(point)
             enemy.move(self.point, random.choice(points))
 
 
@@ -1191,6 +1208,9 @@ class Jerry(PlayCard):
     def __init__(self, image, args, *group):
         super().__init__(image, args, group)
         self.kamikazes = pygame.sprite.Group()  # группа для отрисовки мышей-камикадзе
+        self.sounds = [load_sound(C_VOICES, 'jerry.wav')]
+        self.attack_sounds = [load_sound(C_VOICES, 'attack_jerry.wav'),
+                              load_sound(C_VOICES, 'attack_jerry1.wav')]
 
     def get_ability(self):  # способность доступна, если на точке есть Шу и противники
         if not self.is_attacked and self.chakra > 0:  # также необходимо иметь чакру
@@ -1226,6 +1246,13 @@ class Jerry(PlayCard):
 
 class Keiko(PlayCard):
     """Класс игровой карты Кеико"""
+
+    def __init__(self, image, args, *group):
+        super().__init__(image, args, group)
+        self.sounds = [load_sound(C_VOICES, 'keiko.wav')]
+        self.attack_sounds = [load_sound(C_VOICES, 'attack_keiko.wav'),
+                              load_sound(C_VOICES, 'attack_keiko1.wav')]
+        self.death_sounds = [load_sound(C_VOICES, 'death_keiko.wav')]
 
     def get_ability(self):  # способность доступна, если на точке есть противники
         if not self.is_attacked:
@@ -1273,6 +1300,9 @@ class Akito(PlayCard):
     def __init__(self, image, args, *group):
         super().__init__(image, args, group)
         self.new_technic = None  # новая техника (при выпадении "Я Медик, честно!")
+        self.sounds = [load_sound(C_VOICES, 'akito.wav')]
+        self.attack_sounds = [load_sound(C_VOICES, 'attack_akito.wav')]
+        self.death_sounds = [load_sound(C_VOICES, 'death_akito.wav')]
 
     def get_ability(self):  # способность доступна 1 раз за ход
         if not self.passive_is_used:
@@ -1358,6 +1388,10 @@ class Akito(PlayCard):
 class Ryu(PlayCard):
     """Класс игровой карты Рюу"""
 
+    def __init__(self, image, args, *group):
+        super().__init__(image, args, group)
+        self.sounds = [load_sound(C_VOICES, 'ryu.wav')]
+
     def get_ability(self):  # способность доступна 1 раз за игру
         if not self.passive_is_used:
             if self.fraction == self.groups()[0].main_fraction:
@@ -1400,6 +1434,12 @@ class Ryu(PlayCard):
 class Kitsu(PlayCard):
     """Класс игровой карты Кицу"""
 
+    def __init__(self, image, args, *group):
+        super().__init__(image, args, group)
+        self.sounds = [load_sound(C_VOICES, 'kitsu.wav')]
+        self.attack_sounds = [load_sound(C_VOICES, 'attack_kitsu.wav'),
+                              load_sound(C_VOICES, 'attack_kitsu1.wav')]
+
     def get_damage(self, damage, *enemy):
         """Реализация пассивной способности: 90% шанс не получить
         урон от Бойца Ближнего боя"""
@@ -1428,11 +1468,23 @@ class Kitsu(PlayCard):
 
 class Benkei(PlayCard):
     """Класс игровой карты Бенкей"""
-    pass
+
+    def __init__(self, image, args, *group):
+        super().__init__(image, args, group)
+        self.sounds = [load_sound(C_VOICES, 'benkei.wav')]
+        self.attack_sounds = [load_sound(C_VOICES, 'attack_benkei.wav'),
+                              load_sound(C_VOICES, 'attack_benkei1.wav')]
+        self.death_sounds = [load_sound(C_VOICES, 'death_benkei.wav')]
 
 
 class Teeru(PlayCard):
     """Класс игровой карты Тееру"""
+
+    def __init__(self, image, args, *group):
+        super().__init__(image, args, group)
+        self.sounds = [load_sound(C_VOICES, 'teeru.wav')]
+        self.attack_sounds = [load_sound(C_VOICES, 'attack_teeru.wav')]
+        self.death_sounds = [load_sound(C_VOICES, 'death_teeru.wav')]
 
     def attack(self, enemy):
         """Реализация пассивной способонсти: сжигание вражеской карты-бонуса после уничтожения противника"""
@@ -1459,6 +1511,10 @@ class Teeru(PlayCard):
 class BarKonoha(BonusCard):
     """Класс бонусной карты Бар Конохи"""
 
+    def __init__(self, image, args, *group):
+        super().__init__(image, args, group)
+        self.sounds = [load_sound(C_VOICES, 'bar.wav'), load_sound(C_VOICES, 'bar1.wav')]
+
     def bonus(self):
         """Активация эффекта"""
         for card in PLAYCARDS:  # связываем все доступные карты Конохи синергией
@@ -1472,6 +1528,10 @@ class BarKonoha(BonusCard):
 class Himera(BonusCard):
     """Класс бонусной карты Химера"""
 
+    def __init__(self, image, args, *group):
+        super().__init__(image, args, group)
+        self.sounds = [load_sound(C_VOICES, 'himera.wav'), load_sound(C_VOICES, 'himera1.wav')]
+
     def bonus(self):
         """Активация эффекта"""
         for card in PLAYCARDS:  # активация Химеры
@@ -1481,6 +1541,10 @@ class Himera(BonusCard):
 
 class Tsunami(BonusCard):
     """Класс бонусной карты Тсунами"""
+
+    def __init__(self, image, args, *group):
+        super().__init__(image, args, group)
+        self.sounds = [load_sound(C_VOICES, 'tsunami.wav')]
 
     def bonus(self):
         """Активация эффекта"""
@@ -1509,6 +1573,10 @@ class Tsunami(BonusCard):
 class KingOfMouse(BonusCard):
     """Класс бонусной карты Король мышей"""
 
+    def __init__(self, image, args, *group):
+        super().__init__(image, args, group)
+        self.sounds = [load_sound(C_VOICES, 'king_of_mouse.wav')]
+
     def bonus(self):
         """Активация эффекта"""
         for card in OTHER_PCARDS:
@@ -1529,6 +1597,10 @@ class KingOfMouse(BonusCard):
 
 class Ren(BonusCard):
     """Класс бонусной карты Рен"""
+
+    def __init__(self, image, args, *group):
+        super().__init__(image, args, group)
+        self.sounds = [load_sound(C_VOICES, 'ren.wav')]
 
     def bonus(self):
         """Активация эффекта: переход всех союзных карт с вражеской точки к сопернику"""
@@ -1562,6 +1634,10 @@ class Ren(BonusCard):
 class I_leave(BonusCard):
     """Класс бонусной карты Я ухожу"""
 
+    def __init__(self, image, args, *group):
+        super().__init__(image, args, group)
+        self.sounds = [load_sound(C_VOICES, 'i_leave.wav')]
+
     def bonus(self):
         """Активация эффекта: сжигает случайную карту-бонус у противника"""
         if self.main_activity.first_cards.fraction == KONOHAGAKURE:
@@ -1577,6 +1653,10 @@ class I_leave(BonusCard):
 
 class HymnIva(BonusCard):
     """Класс бонусной карты Гимн Ивагакуре"""
+
+    def __init__(self, image, args, *group):
+        super().__init__(image, args, group)
+        self.sounds = [load_sound(C_VOICES, 'hymn.wav')]
 
     def bonus(self):
         """Активация эффекта"""
@@ -1608,15 +1688,26 @@ class Turtle(BonusCard):
 class Kin(BonusCard):
     """Класс бонусной карты Кин Ивата"""
 
+    def __init__(self, image, args, *group):
+        super().__init__(image, args, group)
+        self.sounds = [load_sound(C_VOICES, 'kin.wav')]
+
     def bonus(self):
         """Активация эффекта: обновление пассивной способности Бенкея"""
         for card in PLAYCARDS:
             if card.short_name == 'benkei':
                 card.passive_is_used = True
+                P_SECOND_INFO[card.id - 1][0][1] = '«Признание» – все союзники, находящиеся на одной' \
+                                                   ' точке с данной картой, получают +1 к урону. Сама карта ' \
+                                                   'также получает бонус к урону (+1).'
 
 
 class TrueMedic(BonusCard):
     """Класс бонусной карты Я медик, честно!"""
+
+    def __init__(self, image, args, *group):
+        super().__init__(image, args, group)
+        self.sounds = [load_sound(C_VOICES, 'true_medic.wav')]
 
     def bonus(self):
         """Активация эффекта"""
@@ -1629,6 +1720,10 @@ class TrueMedic(BonusCard):
 
 class Ambitions(BonusCard):
     """Класс бонусной карты Амбициозноасть"""
+
+    def __init__(self, image, args, *group):
+        super().__init__(image, args, group)
+        self.sounds = [load_sound(C_VOICES, 'death_keiko.wav')]
 
     def bonus(self):
         """Активация эффекта: уничтожение Кеико и всех карт,

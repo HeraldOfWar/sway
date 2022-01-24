@@ -1,4 +1,3 @@
-import random
 from constants import *
 from activities import BattleFragment
 
@@ -86,7 +85,7 @@ class BattlePoint(pygame.sprite.Group):
         """Сражение между картами"""
         friend.attack(enemy)  # сначала атакует первая
         if enemy.is_alive and (enemy.point == friend.point):
-            enemy.attack(friend)  # а потом вторая, если выжила
+            enemy.attack(friend)  # а потом вторая, если выжила и осталась на точке
 
 
 class Deck(pygame.sprite.Group):

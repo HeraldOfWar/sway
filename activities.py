@@ -3,16 +3,19 @@ import numpy
 from system_func import terminate
 from constants import *
 
+MUSIC_END = pygame.USEREVENT + 1
+
 
 class BasicActivity:
     """Класс стандартного окна (активности)"""
 
-    def __init__(self, background, buttons=[], sprites=[], old_activity=None):
+    def __init__(self, background, buttons=[], sprites=[], fragments=[], old_activity=None):
         """Инициализация основных параметров окна"""
         self.background = background  # фон
         self.buttons = buttons  # список кнопок
         self.ui_buttons = []  # список ui-кнопок
         self.sprites = sprites  # спрайты
+        self.fragments = fragments  # фрагменты
         self.old_activity = old_activity  # предыдущая активность
         self.previous_activity = None  # ещё одна предыдущая активность... (escape_button)
         self.next_activity = None  # следующая активность
@@ -25,9 +28,12 @@ class BasicActivity:
         self.exception_msg = None  # сообщение с ошибкой
         self.ui_technic_info, self.ui_ability_info = None, None  # информация о способностях карты
         self.is_blocked = False  # состояние активности (блокировка)
+        self.channel = None
+        self.is_active = True
 
     def run(self, card=None):
         """Запуск основного цикла"""
+        self.is_active = True
         if card and (card in PLAYCARDS or card in OTHER_PCARDS):  # если передаётся карта
             technic_info, ability_info = card.get_abilities_info()  # загружаем информацию о её способностях
             self.ui_technic_info = pygame_gui.elements.UITextBox(
@@ -38,18 +44,33 @@ class BasicActivity:
                 html_text=ability_info,
                 manager=self.manager,
                 relative_rect=pygame.Rect(16, 700, 448, 140))
+            if card.get_sound():
+                pygame.mixer.music.pause()
+                self.channel = card.get_sound().play()
+                self.channel.set_endevent(MUSIC_END)
         elif card and (card in BONUSCARDS or card in OTHER_BCARDS):
             ability_info = card.get_ability_info()
             self.ui_ability_info = pygame_gui.elements.UITextBox(
                 html_text=ability_info,
                 manager=self.manager,
                 relative_rect=pygame.Rect(16, 460, 448, 380))
-        while True:  # а вот и цикл!
+            if card.get_sound():
+                pygame.mixer.music.pause()
+                self.channel = card.get_sound().play()
+                self.channel.set_endevent(MUSIC_END)
+        while self.is_active:  # а вот и цикл!
             for event in pygame.event.get():  # pygame ждёт, чтобы пользователь что-то сделал
                 if event.type == pygame.QUIT:  # ты куда???... (выход при нажатии на системный крестик)
                     if not self.is_blocked:
-                        self.get_termination_dialog()  # спросим у пользователя, уверен ли он в своём выходе
-                        self.block_activity()  # блокируем активность
+                        if card:
+                            if self.channel:
+                                self.channel.stop()
+                                pygame.mixer.music.unpause()
+                            if self.old_activity:
+                                return self.old_activity.run()
+                        self.get_quit()
+                elif event.type == MUSIC_END:
+                    pygame.mixer.music.unpause()
                 elif event.type == pygame.USEREVENT:  # проверка событий, связанных с ui-элементами
                     if event.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:  # подтверждение
                         terminate()  # выход
@@ -64,11 +85,12 @@ class BasicActivity:
                 elif event.type == pygame.KEYDOWN:  # нажатие клавиши на клавиатуре
                     if not self.is_blocked:
                         if event.key == pygame.K_ESCAPE:
+                            if self.channel:
+                                self.channel.stop()
+                                pygame.mixer.music.unpause()
                             if self.old_activity:
-                                pygame.time.wait(100)  # искусственная задержка (100 мс)
-                                return self.old_activity.run()  # запуск предыдущей активности
-                            else:
-                                self.get_termination_dialog()
+                                return self.old_activity.run()
+                            self.get_quit()
                 elif event.type == pygame.MOUSEMOTION:  # движение мыши
                     self.mouse_motion(event)
                 elif event.type == pygame.MOUSEBUTTONDOWN:  # нажатие клавиши мыши
@@ -139,18 +161,26 @@ class BasicActivity:
                 self.ui_ability_info.kill()
             if self.ui_technic_info:
                 self.ui_technic_info.kill()
+            if self.channel:
+                self.channel.stop()
             self.old_activity.run()  # запуск предыдущей активности
         if view.rect == escape_button:
             if self.ui_ability_info:
                 self.ui_ability_info.kill()
             if self.ui_technic_info:
                 self.ui_technic_info.kill()
+            if self.channel:
+                self.channel.stop()
             self.previous_activity.run()  # запуск предыдущей активности
         if view == konohagakure:
             FRACTION = KONOHAGAKURE  # выбрана фракция Конохагакуре
+            sound = random.choice(choose_konoha_sounds)
+            sound.play()
             self.start_game_activity.run()  # запуск игровой активности
         if view == ivagakure:
             FRACTION = IVAGAKURE  # выбрана фракция Ивагакуре
+            sound = random.choice(choose_iva_sounds)
+            sound.play()
             self.start_game_activity.run()
         if view == info_1:
             FRACTION = KONOHAGAKURE
@@ -234,6 +264,28 @@ class BasicActivity:
         self.exception_msg.dismiss_button.set_text('OK')
         self.exception_msg.close_window_button.set_text('X')
 
+    def get_main_menu(self):
+        """Запуск фрагмента главного меню"""
+        self.fragments[0].main_activity = self
+        self.fragments[0].run()
+
+    def get_rules(self):
+        """Запуск фрагмента с правилами"""
+        self.fragments[1].main_activity = self
+        self.fragments[1].run()
+
+    def get_help(self, num=0):
+        """Запуск фрагмента со справкой"""
+        if num:
+            self.fragments[-1].main_activity = self
+            self.fragments[-1].run()
+        else:
+            self.fragments[2].main_activity = self
+            self.fragments[2].run()
+
+    def get_quit(self):
+        self.get_main_menu()
+
 
 class FinalActivity(BasicActivity):
     """Класс финального окна с итогом игры, наследуемый от BasicActivity"""
@@ -271,12 +323,13 @@ class Fragment(BasicActivity):
     """Класс фрагмента, наследуемый от стандартной активности.
     Необходим для того, чтобы не прерывать текущую активность."""
 
-    def __init__(self, f_type, background, buttons=[], sprites=[]):
+    def __init__(self, f_type, background, buttons=[], sprites=[], fragments=[]):
         """Инициализация фрагмента"""
-        super().__init__(background, buttons, sprites)
+        super().__init__(background, buttons, sprites, fragments)
         self.f_type = f_type  # тип фрагмента
         self.main_activity = None  # родительская активность
         self.screen2 = pygame.Surface(screen.get_size())  # второй холст, копия основного
+        self.box = None
         self.load_text(self.f_type)  # загрузка нужного текста в зависимости от типа фрагмента
 
     def output(self):
@@ -311,36 +364,49 @@ class Fragment(BasicActivity):
                 self.ui_ability_info.kill()
             if self.ui_technic_info:
                 self.ui_technic_info.kill()
+            if self.channel:
+                self.channel.stop()
+                pygame.mixer.music.unpause()
         return
 
     def load_text(self, f_type):
         if f_type == 'rules':
-            rules = pygame_gui.elements.UITextBox(
+            self.box = pygame_gui.elements.UITextBox(
                 html_text=rules_txt,
                 relative_rect=pygame.Rect(15, 120, 450, 600),
                 manager=self.manager)
         if f_type == 'rules1':
-            rules = pygame_gui.elements.UITextBox(
+            self.box = pygame_gui.elements.UITextBox(
                 html_text=rules_txt,
                 relative_rect=pygame.Rect(15, 180, 450, 600),
                 manager=self.manager)
         if f_type == 'help':
-            helps = pygame_gui.elements.UITextBox(
+            self.box = pygame_gui.elements.UITextBox(
                 html_text=help_txt,
                 relative_rect=pygame.Rect(15, 120, 450, 600),
                 manager=self.manager)
         if f_type == 'help1':
-            helps = pygame_gui.elements.UITextBox(
+            self.box = pygame_gui.elements.UITextBox(
                 html_text=help_txt,
                 relative_rect=pygame.Rect(15, 180, 450, 600),
                 manager=self.manager)
+
+    def get_quit(self):
+        self.is_active = False
 
 
 class MenuFragment(Fragment):
     """Класс Главного Меню в игре, также наследуемый от фрагмента,
     Чтобы не прерывать игровой цикл."""
 
+    def __init__(self, f_type, background, buttons=[]):
+        super().__init__(f_type, background, buttons)
+        self.main_volume, self.card_volume = None, None
+        self.load_ui_volume()
+
     def run(self, card=None):
+        global MAIN_VOLUME
+        global CARD_VOLUME
         """Запуск основного цикла"""
         while True:
             for event in pygame.event.get():
@@ -361,6 +427,13 @@ class MenuFragment(Fragment):
                             if event.ui_element == self.termination_dialog.cancel_button or \
                                     event.ui_element == self.termination_dialog.close_window_button:
                                 self.unblock_activity()
+                        if self.main_volume:
+                            if event.ui_element == self.main_volume.sliding_button:
+                                MAIN_VOLUME = round(self.main_volume.get_current_value(), 2)
+                                pygame.mixer.music.set_volume(MAIN_VOLUME)
+                        if self.card_volume:
+                            if event.ui_element == self.card_volume.sliding_button:
+                                CARD_VOLUME = round(self.card_volume.get_current_value(), 2)
                 elif event.type == pygame.KEYDOWN:
                     if not self.is_blocked:
                         if event.key == pygame.K_ESCAPE:
@@ -378,7 +451,8 @@ class MenuFragment(Fragment):
                         for sprite in self.sprites:
                             if sprite.rect.collidepoint(event.pos) and sprite.is_enabled:
                                 return self.mouse_click(sprite)
-                self.manager.process_events(event)
+                if not self.channel or self.channel and not self.channel.get_busy():
+                    self.manager.process_events(event)
             self.manager.update(FPS)
             self.output()
             if card:
@@ -389,6 +463,16 @@ class MenuFragment(Fragment):
     def output(self):
         """Отрисовка всех элементов"""
         screen.blit(self.background, (0, 0))  # рисуем только фон
+        text = b_font2.render('Звук', 1, pygame.Color('black'))
+        text_coord = text.get_rect()
+        text_coord.centerx = screen.get_rect().centerx
+        text_coord.centery = 215
+        screen.blit(text, text_coord)
+        text1 = b_font2.render('Эффекты', 1, pygame.Color('black'))
+        text_coord = text1.get_rect()
+        text_coord.centerx = screen.get_rect().centerx
+        text_coord.centery = 310
+        screen.blit(text1, text_coord)
 
     def load_ui(self, ui_element):
         """Загрузка элементов пользовательского интерфейса"""
@@ -416,6 +500,18 @@ class MenuFragment(Fragment):
                 manager=self.manager,
                 text='Выйти')
             self.ui_buttons.append(ui_button)
+
+    def load_ui_volume(self):
+        self.main_volume = pygame_gui.elements.UIHorizontalSlider(
+            relative_rect=pygame.Rect(90, 240, 300, 30),
+            manager=self.manager,
+            start_value=0.5,
+            value_range=[i / 1 for i in range(11)])
+        self.card_volume = pygame_gui.elements.UIHorizontalSlider(
+            relative_rect=pygame.Rect(90, 335, 300, 30),
+            manager=self.manager,
+            start_value=0.7,
+            value_range=[i / 1 for i in range(11)])
 
     def mouse_click(self, view):
         """Обработка нажатия клавиши мыши"""
@@ -456,266 +552,287 @@ class BattleFragment(Fragment):
                 card.default_rect = card.rect  # сохраняем позиции
         while self.is_active:
             for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self.main_activity.get_main_menu()  # запуск главного меню
-                    if self.selection_list:
-                        self.selection_list.kill()
-                    self.set_static_mode()
-                elif event.type == pygame.USEREVENT:
-                    if event.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
-                        if event.ui_element == self.confirm_dialog:  # при подтверждении диалога
-                            if self.mode == 'default':  # установка стандартного состояния
-                                self.main_activity.set_static_mode()
-                                self.set_static_mode()
-                            elif self.mode == 'static':  # при подтверждении возвращения на базу
-                                self.set_static_mode()  # карты в деревню устанавливаем стандартный режим
-                                if self.main_activity.first_cards.get_state():
-                                    """Перемещение карты"""
-                                    self.current_card.move(self.battlepoint, self.main_activity.first_cards)
+                try:
+                    if event.type == pygame.QUIT:
+                        self.main_activity.get_main_menu()  # запуск главного меню
+                        if self.selection_list:
+                            self.selection_list.kill()
+                        self.set_static_mode()
+                    elif event.type == pygame.USEREVENT:
+                        if event.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
+                            if event.ui_element == self.confirm_dialog:  # при подтверждении диалога
+                                if self.mode == 'default':  # установка стандартного состояния
                                     self.main_activity.set_static_mode()
-                                    return
-                                else:
-                                    """Перемещение карты"""
-                                    self.current_card.move(self.battlepoint, self.main_activity.second_cards)
-                                    self.main_activity.set_static_mode()
-                                    return
-                            elif self.mode == 'attack':  # при подтверждении атаки устанавливаем режим боя
-                                if self.current_card.short_name == 'jerry' and \
-                                        self.current_card.passive_is_active:
-                                    # если Джерри использует способность
+                                    self.set_static_mode()
+                                elif self.mode == 'static':  # при подтверждении возвращения на базу
+                                    self.set_static_mode()  # карты в деревню устанавливаем стандартный режим
                                     if self.main_activity.first_cards.get_state():
-                                        point = self.battlepoint. \
-                                            second_points[self.battlepoint.point2_cards. \
-                                            index(self.card_is_getting)]
+                                        """Перемещение карты"""
+                                        self.current_card.move(self.battlepoint,
+                                                               self.main_activity.first_cards)
+                                        self.main_activity.set_static_mode()
+                                        return
                                     else:
-                                        point = self.battlepoint. \
-                                            first_points[self.battlepoint.point1_cards. \
-                                            index(self.card_is_getting)]
-                                    self.current_card.get_kamikaze(self.card_is_getting, point)
-                                    self.load_ui(battle_ok)  # загружаем кнопку ОК
-                                    self.choose_enemy = False  # устанавливаем значения режимов
+                                        """Перемещение карты"""
+                                        self.current_card.move(self.battlepoint,
+                                                               self.main_activity.second_cards)
+                                        self.main_activity.set_static_mode()
+                                        return
+                                elif self.mode == 'attack':  # при подтверждении атаки устанавливаем режим боя
+                                    if self.current_card.short_name == 'jerry' and \
+                                            self.current_card.passive_is_active:
+                                        # если Джерри использует способность
+                                        if self.main_activity.first_cards.get_state():
+                                            point = self.battlepoint. \
+                                                second_points[self.battlepoint.point2_cards. \
+                                                index(self.card_is_getting)]
+                                        else:
+                                            point = self.battlepoint. \
+                                                first_points[self.battlepoint.point1_cards. \
+                                                index(self.card_is_getting)]
+                                        self.current_card.get_kamikaze(self.card_is_getting, point)
+                                        self.load_ui(battle_ok)  # загружаем кнопку ОК
+                                        self.choose_enemy = False  # устанавливаем значения режимов
+                                    elif self.current_card.short_name == 'hiruko' and \
+                                            self.current_card.himera_is_used and \
+                                            self.current_card.himera_card.short_name == 'jerry' and \
+                                            self.current_card.passive_is_active:
+                                        if self.main_activity.first_cards.get_state():
+                                            point = self.battlepoint. \
+                                                second_points[self.battlepoint.point2_cards. \
+                                                index(self.card_is_getting)]
+                                        else:
+                                            point = self.battlepoint. \
+                                                first_points[self.battlepoint.point1_cards. \
+                                                index(self.card_is_getting)]
+                                        self.current_card.get_kamikaze(self.card_is_getting, point)
+                                        self.load_ui(battle_ok)
+                                        self.choose_enemy = False
+                                    else:  # обычная атака
+                                        self.battlepoint.set_battle_mode(self.current_card,
+                                                                         self.card_is_getting)
+                                        # устраиваем поединок между картами
+                                        self.battlepoint.battle(self.current_card, self.card_is_getting)
+                                        self.load_ui(battle_ok)  # загружаем кнопку ОК
+                                        self.is_attack, self.choose_enemy = True, False
+                                        # устанавливаем значения режимов
+                                        self.current_card.is_attacked = True  # подтверждаем, что карта уже
+                                        # атаковала в этом ходу
+                                        if self.current_card.is_alive:
+                                            if self.card_is_getting.is_alive:
+                                                # для способности Кентару и Икетани
+                                                if self.card_is_getting.short_name == 'kentaru' \
+                                                        and self.card_is_getting.passive_is_used:
+                                                    self.card_is_getting.kicked.sprites()[0].direction = 'left'
+                                                if self.card_is_getting.short_name == 'iketani':
+                                                    self.card_is_getting.kicked.sprites()[0].direction = 'left'
+                                                if self.card_is_getting.short_name == 'hiruko' and \
+                                                        self.card_is_getting.himera_is_used and \
+                                                        self.card_is_getting.himera_card.short_name \
+                                                        == 'kentaru' \
+                                                        and self.card_is_getting.passive_is_used:
+                                                    self.card_is_getting.kicked.sprites()[0].direction = 'left'
+                                                if self.card_is_getting.short_name == 'hiruko' and \
+                                                        self.card_is_getting.himera_is_used and \
+                                                        self.card_is_getting.himera_card.short_name \
+                                                        == 'iketani':
+                                                    self.card_is_getting.kicked.sprites()[0].direction = 'left'
+                                elif self.mode == 'heal':  # при подтверждении лечения
+                                    if self.current_card.short_name == 'akito' and \
+                                            self.current_card.passive_is_active:  # для способности Акито
+                                        self.current_card.heal(self.card_is_getting)
+                                        self.set_static_mode()
+                                    elif self.current_card.short_name == 'hiruko' and \
+                                            self.current_card.passive_is_active:
+                                        # для украденной способности Хируко
+                                        self.current_card.heal(self.card_is_getting)
+                                        self.set_static_mode()
+                                    elif self.card_is_getting.current_health == \
+                                            self.card_is_getting.health_capacity:
+                                        # если у союзника полное здоровье
+                                        self.get_exception_message('Прямо сейчас союзник не нуждается в вашей '
+                                                                   'помощи. Поищите кого-нибудь другого!')
+                                    else:  # если всё хорошо
+                                        self.current_card.heal(self.card_is_getting)  # лечим
+                                        self.set_static_mode()
+                                elif self.mode == 'ability':  # при подтверждении активации способности
+                                    self.current_card.ability()  # используем способность
+                                elif self.mode == 'himera_ability':
+                                    self.current_card.new_ability()
+                                elif self.mode == 'himera':  # при подтверждении активации Химеры
+                                    self.current_card.himera(self.card_is_getting)  # используем Химеру
+                                    self.set_static_mode()
+                                    self.mode = 'default'  # и выводим сообщение
+                                    self.get_confirm_dialog('Украдена способность', 'ХА-ХА, ЭТО ТОЛЬКО НАЧАЛО!'
+                                                                                    ' ХИМЕРА ЖАЖДЕТ БОЛЬШЕГО!')
+                        elif event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                            if event.ui_element.rect == battle_ok:  # при нажатии на кнопку ОК
+                                if self.card_is_getting.short_name == 'pashke':  # если Пашке погибает
+                                    card = self.card_is_getting
+                                    if not card.is_alive:
+                                        card.rise_vashte()  # появляется Ваштэ!
+                                elif self.current_card.short_name == 'pashke':
+                                    card = self.current_card
+                                    if not card.is_alive:
+                                        card.rise_vashte()  # появляется Ваштэ!
+                                elif self.current_card.short_name == 'hiruko' and \
+                                        self.current_card.himera_is_used and \
+                                        self.current_card.himera_card == 'pashke':
+                                    card = self.current_card
+                                    if not card.is_alive:
+                                        card.rise_vashte()  # появляется Ваштэ!
+                                elif self.card_is_getting.short_name == 'hiruko' and \
+                                        self.card_is_getting.himera_is_used and \
+                                        self.card_is_getting.himera_card == 'pashke':
+                                    card = self.card_is_getting
+                                    if not card.is_alive:
+                                        card.rise_vashte()  # появляется Ваштэ!
+                                elif self.current_card.short_name == 'jerry' and self.current_card.kamikazes:
+                                    self.current_card.kamikazes.empty()  # очищаем группу мышей-камикадзе
+                                elif self.card_is_getting.short_name == 'jerry' and \
+                                        self.card_is_getting.kamikazes:
+                                    self.card_is_getting.kamikazes.empty()
                                 elif self.current_card.short_name == 'hiruko' and \
                                         self.current_card.himera_is_used and \
                                         self.current_card.himera_card.short_name == 'jerry' and \
-                                        self.current_card.passive_is_active:
-                                    if self.main_activity.first_cards.get_state():
-                                        point = self.battlepoint. \
-                                            second_points[self.battlepoint.point2_cards. \
-                                            index(self.card_is_getting)]
+                                        self.current_card.kamikazes:
+                                    self.current_card.kamikazes.empty()  # очищаем группу мышей-камикадзе
+                                elif self.card_is_getting.short_name == 'hiruko' and \
+                                        self.card_is_getting.himera_is_used and \
+                                        self.card_is_getting.himera_card.short_name == 'jerry' and \
+                                        self.card_is_getting.kamikazes:
+                                    self.card_is_getting.kamikazes.empty()
+                                event.ui_element.kill()  # удаляем элемент
+                                self.ui_buttons.remove(event.ui_element)  # отовсюду
+                                self.set_static_mode()  # возвращаем стандартное состояние
+                                for card in self.battlepoint:
+                                    if card.default_rect != card.rect:
+                                        card.default_rect = card.rect  # сохраняем позиции
+                                    card.is_damaged = 0
+                            if self.confirm_dialog:
+                                if event.ui_element == self.confirm_dialog.cancel_button or \
+                                        event.ui_element == self.confirm_dialog.close_window_button:
+                                    self.set_static_mode()
+                            if self.exception_msg:
+                                if event.ui_element == self.exception_msg.close_window_button or \
+                                        event.ui_element == self.exception_msg.dismiss_button:
+                                    self.set_static_mode()
+                            for element in self.ui_buttons:
+                                if element == event.ui_element and element.is_enabled:
+                                    return self.mouse_click(element, True)
+                        elif event.user_type == pygame_gui.UI_SELECTION_LIST_NEW_SELECTION:  # выбор элемента
+                            if event.ui_element == self.selection_list:  # всплывающего списка
+                                if event.text == 'Атаковать':  # переход в состояние атаки
+                                    if self.current_card.can_attack() == 'len_cards':  # если нет противников
+                                        self.get_exception_message('Ложная тревога, всё чисто!')
+                                    elif self.current_card.can_attack() == 'chakra':  # если нет чакры
+                                        self.get_exception_message('Силы вашего бойца на исходе, '
+                                                                   'пора возвращаться в деревню!')
+                                    elif self.current_card.can_attack() == 'is_attacked':  # если карта уже
+                                        # атаковала в этом ходу
+                                        self.get_exception_message('Нужно взять небольшой перерыв: прямо '
+                                                                   'сейчас враг готов к нашему нападению.')
                                     else:
-                                        point = self.battlepoint. \
-                                            first_points[self.battlepoint.point1_cards. \
-                                            index(self.card_is_getting)]
-                                    self.current_card.get_kamikaze(self.card_is_getting, point)
-                                    self.load_ui(battle_ok)
-                                    self.choose_enemy = False
-                                else:  # обычная атака
-                                    self.battlepoint.set_battle_mode(self.current_card, self.card_is_getting)
-                                    # устраиваем поединок между картами
-                                    self.battlepoint.battle(self.current_card, self.card_is_getting)
-                                    self.load_ui(battle_ok)  # загружаем кнопку ОК
-                                    self.is_attack, self.choose_enemy = True, False  # устанавливаем значения
-                                    # режимов
-                                    self.current_card.is_attacked = True  # подтверждаем, что карта уже
-                                    # атаковала в этом ходу
-                                    if self.card_is_getting.is_alive:  # для способности Кентару и Икетани
-                                        if self.card_is_getting.short_name == 'kentaru' \
-                                                and self.card_is_getting.passive_is_used:
-                                            self.card_is_getting.kicked.sprites()[0].direction = 'left'
-                                        if self.card_is_getting.short_name == 'iketani':
-                                            self.card_is_getting.kicked.sprites()[0].direction = 'left'
-                                        if self.card_is_getting.short_name == 'hiruko' and \
-                                                self.card_is_getting.himera_is_used and \
-                                                self.card_is_getting.himera_card.short_name == 'kentaru' and \
-                                                self.card_is_getting.passive_is_used:
-                                            self.card_is_getting.kicked.sprites()[0].direction = 'left'
-                                        if self.card_is_getting.short_name == 'hiruko' and \
-                                                self.card_is_getting.himera_is_used and \
-                                                self.card_is_getting.himera_card.short_name == 'iketani':
-                                            self.card_is_getting.kicked.sprites()[0].direction = 'left'
-                            elif self.mode == 'heal':  # при подтверждении лечения
-                                if self.current_card.short_name == 'akito' and \
-                                        self.current_card.passive_is_active:  # для способности Акито
-                                    self.current_card.heal(self.card_is_getting)
+                                        self.set_static_mode()
+                                        self.set_attack_mode()  # установка состояние атаки
+                                        if self.current_card.get_attack_sound():
+                                            self.channel = self.current_card.get_attack_sound().play()
+                                            self.channel.set_volume(CARD_VOLUME)
+                                elif event.text == 'Вылечить':  # переход в состояние поддержки
+                                    if self.current_card.can_heal() == 'len_cards':  # если нет союзников
+                                        self.get_exception_message('Скорее возвращайся к союзникам, здесь ты'
+                                                                   ' бесполезен!')
+                                    elif self.current_card.can_heal() == 'chakra':  # если нет чакры
+                                        self.get_exception_message('Силы вашего бойца на исходе, '
+                                                                   'пора возвращаться в деревню!')
+                                    elif self.current_card.can_heal() == 'is_healed':  # если карта уже
+                                        # поддерживала в этом ходу
+                                        self.get_exception_message('Боец, твоя чакра ещё не до конца '
+                                                                   'восстановлена, так ты можешь сделать '
+                                                                   'только хуже!')
+                                    else:
+                                        self.set_static_mode()
+                                        self.set_heal_mode()  # установка состояние поддержки
+                                elif event.text == 'Переместить':  # переход в состояние перемещения карты
+                                    can_move = self.current_card.can_move()
+                                    if can_move == 'step1' or can_move == 'step':  # если это первый ход
+                                        self.get_exception_message('В первом ходу нельзя дважды переместить'
+                                                                   ' одну карту!')
+                                    elif can_move == 'pace':  # если закончилась скорость
+                                        self.get_exception_message('Вашему бойцу нужно отдохнуть...')
+                                    elif can_move == 'pace1':  # если не хватает скорости
+                                        self.get_exception_message('Противники перекрыли все пути отступления!'
+                                                                   ' В таком состоянии нам не выбраться!')
+                                    else:
+                                        """Установка режима перемещения, 
+                                        передача текущей боевой точки и карты"""
+                                        self.main_activity.set_static_mode()
+                                        self.main_activity.card_is_moving = self.current_card  # устанавливаем
+                                        # перемещаемую карту
+                                        self.main_activity.set_move_mode(self.battlepoint)
+                                        self.set_static_mode()
+                                        self.selection_list.kill()
+                                        return
+                                elif event.text == 'Информация':  # выдача информации о карте
                                     self.set_static_mode()
-                                elif self.current_card.short_name == 'hiruko' and \
-                                        self.current_card.passive_is_active:
-                                    # для украденной способности Хируко
-                                    self.current_card.heal(self.card_is_getting)
+                                    self.main_activity.get_card_info(self.current_card)
+                                elif event.text == 'Вернуться в деревню':  # перемещение карты в "руку"
+                                    can_move = self.current_card.can_move()
+                                    if can_move == 'step1' or can_move == 'step':  # если это первый ход
+                                        self.get_exception_message('В первом ходу нельзя дважды переместить'
+                                                                   ' одну карту!')
+                                    elif can_move == 'pace':  # если закончилась скорость
+                                        self.get_exception_message('Вашему бойцу нужно отдохнуть...')
+                                    elif can_move == 'pace1':  # если не хватает скорости
+                                        self.get_exception_message('Противники перекрыли все пути отступления!'
+                                                                   ' В таком состоянии нам не выбраться!')
+                                    else:  # вывод подтверждения
+                                        self.main_activity.card_is_moving = self.current_card
+                                        self.get_confirm_dialog('Подтверждение хода', f'Вы уверены, что хотите '
+                                                                                      f'переместить '
+                                                                                      f'{self.current_card.name} '
+                                                                                      f'в деревню (в "руку")?')
+                                    self.block_battlepoint()
+                                elif event.text == 'Способность':
+                                    # переход в состояние использования способности
+                                    self.current_card.passive_is_active = True
+                                    if self.current_card.short_name == 'akemi' or \
+                                            self.current_card.short_name == 'hiruko':  # для Акеми и Хируко
+                                        self.set_use_ability_mode()  # установка режима
+                                    else:
+                                        self.current_card.ability()  # использование способности
+                                elif event.text == 'Химера':  # использование Химеры
+                                    self.current_card.get_himera()
+                                elif event.text == 'Доп.способность':  # использование доп.способности Хируко
+                                    if self.current_card.himera_card.short_name == 'akemi':
+                                        self.set_use_ability_mode()
+                                        self.mode = 'himera_ability'
+                                    else:
+                                        self.current_card.new_ability()
+                                else:  # возвращаемся в обычное состояние
                                     self.set_static_mode()
-                                elif self.card_is_getting.current_health == \
-                                        self.card_is_getting.health_capacity:
-                                    # если у союзника полное здоровье
-                                    self.get_exception_message('Прямо сейчас союзник не нуждается в вашей '
-                                                               'помощи. Поищите кого-нибудь другого!')
-                                else:  # если всё хорошо
-                                    self.current_card.heal(self.card_is_getting)  # лечим
-                                    self.set_static_mode()
-                            elif self.mode == 'ability':  # при подтверждении активации способности
-                                self.current_card.ability()  # используем способность
-                            elif self.mode == 'himera_ability':
-                                self.current_card.new_ability()
-                            elif self.mode == 'himera':  # при подтверждении активации Химеры
-                                self.current_card.himera(self.card_is_getting)  # используем Химеру
-                                self.set_static_mode()
-                                self.mode = 'default'  # и выводим сообщение
-                                self.get_confirm_dialog('Украдена способность', 'ХА-ХА, ЭТО ТОЛЬКО НАЧАЛО! '
-                                                                                'ХИМЕРА ЖАЖДЕТ БОЛЬШЕГО!')
-                    elif event.user_type == pygame_gui.UI_BUTTON_PRESSED:
-                        if event.ui_element.rect == battle_ok:  # при нажатии на кнопку ОК
-                            if self.card_is_getting.short_name == 'pashke':  # если Пашке погибает
-                                card = self.card_is_getting
-                                if not card.is_alive:
-                                    card.rise_vashte()  # появляется Ваштэ!
-                            elif self.current_card.short_name == 'pashke':
-                                card = self.current_card
-                                if not card.is_alive:
-                                    card.rise_vashte()  # появляется Ваштэ!
-                            elif self.current_card.short_name == 'hiruko' and \
-                                    self.current_card.himera_is_used and \
-                                    self.current_card.himera_card == 'pashke':
-                                card = self.current_card
-                                if not card.is_alive:
-                                    card.rise_vashte()  # появляется Ваштэ!
-                            elif self.card_is_getting.short_name == 'hiruko' and \
-                                    self.card_is_getting.himera_is_used and \
-                                    self.card_is_getting.himera_card == 'pashke':
-                                card = self.card_is_getting
-                                if not card.is_alive:
-                                    card.rise_vashte()  # появляется Ваштэ!
-                            elif self.current_card.short_name == 'jerry' and self.current_card.kamikazes:
-                                self.current_card.kamikazes.empty()  # очищаем группу мышей-камикадзе
-                            elif self.card_is_getting.short_name == 'jerry' and self.card_is_getting.kamikazes:
-                                self.card_is_getting.kamikazes.empty()
-                            elif self.current_card.short_name == 'hiruko' and \
-                                    self.current_card.himera_is_used and \
-                                    self.current_card.himera_card.short_name == 'jerry' and \
-                                    self.current_card.kamikazes:
-                                self.current_card.kamikazes.empty()  # очищаем группу мышей-камикадзе
-                            elif self.card_is_getting.short_name == 'hiruko' and \
-                                    self.card_is_getting.himera_is_used and \
-                                    self.card_is_getting.himera_card.short_name == 'jerry' and \
-                                    self.card_is_getting.kamikazes:
-                                self.card_is_getting.kamikazes.empty()
-                            event.ui_element.kill()  # удаляем элемент
-                            self.ui_buttons.remove(event.ui_element)  # отовсюду
-                            self.set_static_mode()  # возвращаем стандартное состояние
-                        if self.confirm_dialog:
-                            if event.ui_element == self.confirm_dialog.cancel_button or \
-                                    event.ui_element == self.confirm_dialog.close_window_button:
-                                self.set_static_mode()
-                        if self.exception_msg:
-                            if event.ui_element == self.exception_msg.close_window_button or \
-                                    event.ui_element == self.exception_msg.dismiss_button:
-                                self.set_static_mode()
-                        for element in self.ui_buttons:
-                            if element == event.ui_element and element.is_enabled:
-                                return self.mouse_click(element, True)
-                    elif event.user_type == pygame_gui.UI_SELECTION_LIST_NEW_SELECTION:  # выбор элемента
-                        if event.ui_element == self.selection_list:  # всплывающего списка
-                            if event.text == 'Атаковать':  # переход в состояние атаки
-                                if self.current_card.can_attack() == 'len_cards':  # если нет противников
-                                    self.get_exception_message('Ложная тревога, всё чисто!')
-                                elif self.current_card.can_attack() == 'chakra':  # если нет чакры
-                                    self.get_exception_message('Силы вашего бойца на исходе, '
-                                                               'пора возвращаться в деревню!')
-                                elif self.current_card.can_attack() == 'is_attacked':  # если карта уже
-                                    # атаковала в этом ходу
-                                    self.get_exception_message('Нужно взять небольшой перерыв: прямо сейчас'
-                                                               ' враг готов к нашему нападению.')
-                                else:
-                                    self.set_static_mode()
-                                    self.set_attack_mode()  # установка состояние атаки
-                            elif event.text == 'Вылечить':  # переход в состояние поддержки
-                                if self.current_card.can_heal() == 'len_cards':  # если нет союзников
-                                    self.get_exception_message('Скорее возвращайся к союзникам, здесь ты'
-                                                               ' бесполезен!')
-                                elif self.current_card.can_heal() == 'chakra':  # если нет чакры
-                                    self.get_exception_message('Силы вашего бойца на исходе, '
-                                                               'пора возвращаться в деревню!')
-                                elif self.current_card.can_heal() == 'is_healed':  # если карта уже
-                                    # поддерживала в этом ходу
-                                    self.get_exception_message('Боец, твоя чакра ещё не до конца восстановлена'
-                                                               ', так ты можешь сделать только хуже!')
-                                else:
-                                    self.set_static_mode()
-                                    self.set_heal_mode()  # установка состояние поддержки
-                            elif event.text == 'Переместить':  # переход в состояние перемещения карты
-                                can_move = self.current_card.can_move()
-                                if can_move == 'step1' or can_move == 'step':  # если это первый ход
-                                    self.get_exception_message('В первом ходу нельзя дважды переместить'
-                                                               ' одну карту!')
-                                elif can_move == 'pace':  # если закончилась скорость
-                                    self.get_exception_message('Вашему бойцу нужно отдохнуть...')
-                                elif can_move == 'pace1':  # если не хватает скорости
-                                    self.get_exception_message('Противники перекрыли все пути отступления! '
-                                                               'В таком состоянии нам не выбраться!')
-                                else:
-                                    """Установка режима перемещения, передача текущей боевой точки и карты"""
-                                    self.main_activity.set_static_mode()
-                                    self.main_activity.card_is_moving = self.current_card  # устанавливаем
-                                    # перемещаемую карту
-                                    self.main_activity.set_move_mode(self.battlepoint)
-                                    self.set_static_mode()
-                                    self.selection_list.kill()
-                                    return
-                            elif event.text == 'Информация':  # выдача информации о карте
-                                self.set_static_mode()
-                                self.main_activity.get_card_info(self.current_card)
-                            elif event.text == 'Вернуться в деревню':  # перемещение карты в "руку"
-                                can_move = self.current_card.can_move()
-                                if can_move == 'step1' or can_move == 'step':  # если это первый ход
-                                    self.get_exception_message('В первом ходу нельзя дважды переместить'
-                                                               ' одну карту!')
-                                elif can_move == 'pace':  # если закончилась скорость
-                                    self.get_exception_message('Вашему бойцу нужно отдохнуть...')
-                                elif can_move == 'pace1':  # если не хватает скорости
-                                    self.get_exception_message('Противники перекрыли все пути отступления! '
-                                                               'В таком состоянии нам не выбраться!')
-                                else:  # вывод подтверждения
-                                    self.main_activity.card_is_moving = self.current_card
-                                    self.get_confirm_dialog('Подтверждение хода', f'Вы уверены, что хотите '
-                                                                                  f'переместить '
-                                                                                  f'{self.current_card.name} '
-                                                                                  f'в деревню (в "руку")?')
-                                self.block_battlepoint()
-                            elif event.text == 'Способность':  # переход в состояние использования способности
-                                self.current_card.passive_is_active = True
-                                if self.current_card.short_name == 'akemi' or \
-                                        self.current_card.short_name == 'hiruko':  # для Акеми и Хируко
-                                    self.set_use_ability_mode()  # установка режима
-                                else:
-                                    self.current_card.ability()  # использование способности
-                            elif event.text == 'Химера':  # использование Химеры
-                                self.current_card.get_himera()
-                            elif event.text == 'Доп.способность':  # использование доп.способности Хируко
-                                if self.current_card.himera_card.short_name == 'akemi':
-                                    self.set_use_ability_mode()
-                                    self.mode = 'himera_ability'
-                                else:
-                                    self.current_card.new_ability()
-                            else:  # возвращаемся в обычное состояние
-                                self.set_static_mode()
-                            self.selection_list.kill()  # удаление списка действий
-                elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:  # при нажатии на кнопку ESCAPE возвращаемся
-                        self.set_static_mode()  # обратно на игровое поле
-                        if self.selection_list:
-                            self.selection_list.kill()
-                        self.main_activity.set_static_mode()
-                        return
-                    elif event.key == pygame.K_BACKSPACE:  # при нажатии на кнопку BACKSPACE
-                        if self.selection_list:
-                            self.selection_list.kill()
-                        self.set_static_mode()  # возвращаем фрагмент в обычное состояние
-                elif event.type == pygame.MOUSEMOTION:
-                    self.mouse_motion(event)
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    if event.button == pygame.BUTTON_LEFT:
-                        for button in self.buttons:
-                            if button.collidepoint(event.pos) and button.is_enabled:
-                                self.mouse_click(button)
-                self.manager.process_events(event)
+                                self.selection_list.kill()  # удаление списка действий
+                    elif event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_ESCAPE:  # при нажатии на кнопку ESCAPE возвращаемся
+                            self.set_static_mode()  # обратно на игровое поле
+                            if self.selection_list:
+                                self.selection_list.kill()
+                            self.main_activity.set_static_mode()
+                            return
+                        elif event.key == pygame.K_BACKSPACE:  # при нажатии на кнопку BACKSPACE
+                            if self.selection_list:
+                                self.selection_list.kill()
+                            self.set_static_mode()  # возвращаем фрагмент в обычное состояние
+                    elif event.type == pygame.MOUSEMOTION:
+                        self.mouse_motion(event)
+                    elif event.type == pygame.MOUSEBUTTONDOWN:
+                        if event.button == pygame.BUTTON_LEFT:
+                            for button in self.buttons:
+                                if button.collidepoint(event.pos) and button.is_enabled:
+                                    self.mouse_click(button)
+                    self.manager.process_events(event)
+                except AttributeError:
+                    pass
             self.manager.update(FPS)
             self.output()
             self.manager.draw_ui(screen)
@@ -1023,6 +1140,8 @@ class BattleFragment(Fragment):
         for health_bar in self.health_bars:
             health_bar.kill()
         self.load_health_bar()
+        if self.channel:
+            self.channel.stop()
         for button in self.buttons:
             button.is_hovered = False
             button.is_enabled = True
@@ -1121,6 +1240,8 @@ class BattleFragment(Fragment):
 
     def close(self):
         """Закрытие фрагмента"""
+        if self.channel:
+            self.channel.stop()
         self.set_static_mode()
         self.is_active = False
 
@@ -1141,6 +1262,7 @@ class GameActivity(BasicActivity):
         self.selection_list1, self.selection_list2 = None, None  # список действий для карты
         self.card_is_moving, self.battlepoint_is_getting = None, None  # передвигаемая карта и конечная точка
         self.rising_card = None  # появляющаяся карта
+        self.flag, self.flag1 = True, True
 
     def run(self):
         """Запуск игрового цикла"""
@@ -1159,156 +1281,217 @@ class GameActivity(BasicActivity):
         self.second_cards.set_state(False)  # сначала ходит 1 игрок!
         self.first_cards.set_hand()  # заполняем руку (1 игрок)
         self.second_cards.set_hand()  # заполняем руку (2 игрок)
+        pygame.mixer.music.unload()
+        random.shuffle(game_music)
+        load_music(BACK_MUSIC, game_music[0])
+        for music in game_music[1:]:
+            add_music(BACK_MUSIC, music)
+        pygame.mixer.music.play()
         self.get_help()  # сначала читаем о том, куда и когда нажимать!
         for deck in self.decks:
             deck.update_hand()  # загрузка карт в руке
         self.set_static_mode()  # установка стандартного состояния
         while True:
             for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self.get_main_menu()  # переход в главное меню
-                elif event.type == pygame.USEREVENT:
-                    if event.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
-                        if event.ui_element == self.confirm_dialog:
-                            if self.mode == 'move':
-                                pygame.time.wait(100)
-                                if self.card_is_moving.can_move() == 'step':
-                                    # при попытке переместить больше 3 карт в первом ходу
-                                    self.get_exception_message('В первом ходу можно переместить только '
-                                                               '3 карты!')
-                                    self.block_board()
-                                elif self.card_is_moving.can_move(self.battlepoint_is_getting) == 'len_cards':
-                                    # если на боевой точке уже находятся 3 союзные карты
-                                    self.get_exception_message('Отправлять слишком много бойцов на одну точку'
-                                                               ' неразумно. Не забывайте: ваши ресурсы '
-                                                               'ограничены!')
-                                    self.block_board()
-                                elif self.card_is_moving.can_move() == 'pace':
-                                    # если закончилась скорость
-                                    if self.card_is_moving.fraction == KONOHAGAKURE:  # для Конохагакуре
-                                        self.get_exception_message('Вашему бойцу нужно передохнуть... '
-                                                                   'Сходите перекусить в Ичираку Рамен!')
-                                    else:  # для Ивагакуре
-                                        self.get_exception_message('Вашему бойцу нужно передохнуть... Самое '
-                                                                   'время посетить монумент Кеико Гисе!')
-                                    self.block_board()
-                                else:
-                                    """Перемещение карты"""
-                                    if self.card_is_moving in self.first_cards.hand:
-                                        self.card_is_moving.move(self.first_cards,
-                                                                 self.battlepoint_is_getting)
-                                    elif self.card_is_moving in self.second_cards.hand:
-                                        self.card_is_moving.move(self.second_cards,
-                                                                 self.battlepoint_is_getting)
-                                    else:
-                                        for battlepoint in self.battlepoints:
-                                            if self.card_is_moving in battlepoint:
-                                                self.card_is_moving.move(battlepoint,
+                try:
+                    if event.type == pygame.QUIT:
+                        if self.channel and self.channel.get_busy():
+                            self.channel.stop()
+                        self.get_main_menu()  # переход в главное меню
+                    elif event.type == pygame.USEREVENT:
+                        if (self.channel and event != self.channel.get_endevent()) or not self.channel:
+                            if event.user_type == pygame_gui.UI_CONFIRMATION_DIALOG_CONFIRMED:
+                                if event.ui_element == self.confirm_dialog:
+                                    if self.mode == 'move':
+                                        pygame.time.wait(100)
+                                        if self.card_is_moving.can_move() == 'step':
+                                            # при попытке переместить больше 3 карт в первом ходу
+                                            self.get_exception_message('В первом ходу можно переместить только'
+                                                                       ' 3 карты!')
+                                            self.block_board()
+                                        elif self.card_is_moving.can_move(self.battlepoint_is_getting) \
+                                                == 'len_cards':
+                                            # если на боевой точке уже находятся 3 союзные карты
+                                            self.get_exception_message('Отправлять слишком много бойцов на '
+                                                                       'одну точку неразумно. Не забывайте: '
+                                                                       'ваши ресурсы ограничены!')
+                                            self.block_board()
+                                        elif self.card_is_moving.can_move() == 'pace':
+                                            # если закончилась скорость
+                                            if self.card_is_moving.fraction == KONOHAGAKURE:
+                                                # для Конохагакуре
+                                                self.get_exception_message('Вашему бойцу нужно передохнуть... '
+                                                                           'Сходите перекусить в Ичираку '
+                                                                           'Рамен!')
+                                            else:  # для Ивагакуре
+                                                self.get_exception_message('Вашему бойцу нужно передохнуть... '
+                                                                           'Самое время посетить монумент '
+                                                                           'Кеико Гисе!')
+                                            self.block_board()
+                                        else:
+                                            """Перемещение карты"""
+                                            if self.card_is_moving in self.first_cards.hand:
+                                                self.card_is_moving.move(self.first_cards,
                                                                          self.battlepoint_is_getting)
-                                                break
-                                    if self.card_is_moving in self.first_cards:
-                                        if self.first_cards.step == 0:  # обновление числа карт,
-                                            self.first_cards.is_moved += 1  # перемещённых в первом ходу
-                                    else:
-                                        if self.second_cards.step == 0:
-                                            self.second_cards.is_moved += 1
-                                    self.set_static_mode()
-                            else:  # подтверждение покупки бонусной карты
-                                if self.first_cards.get_state():
-                                    self.first_cards.score -= 25  # тратим ОЗ
-                                    self.rising_card = self.first_cards.get_bonus()  # получаем случайную карту
-                                else:
-                                    self.second_cards.score -= 25
-                                    self.rising_card = self.second_cards.get_bonus()
-                                self.set_card_rise(self.rising_card)  # запуск анимации появления карты
-                            self.confirm_dialog.kill()  # уничтожение диалогового окна
-                    elif event.user_type == pygame_gui.UI_BUTTON_PRESSED:
-                        for button in self.ui_buttons:
-                            if button == event.ui_element and button.is_enabled:
-                                self.mouse_click(button, True)
-                        if self.confirm_dialog:
-                            if event.ui_element == self.confirm_dialog.cancel_button or \
-                                    event.ui_element == self.confirm_dialog.close_window_button:
-                                self.set_static_mode()
-                                if self.card_is_moving in self.first_cards.hand:
-                                    self.set_move_mode(self.first_cards)
-                                elif self.card_is_moving in self.second_cards.hand:
-                                    self.set_move_mode(self.second_cards)
-                                else:
-                                    for battlepoint in self.battlepoints:
-                                        if self.card_is_moving in battlepoint:
-                                            self.set_move_mode(battlepoint)
-                                self.confirm_dialog.kill()
-                        if self.exception_msg:
-                            if event.ui_element == self.exception_msg.close_window_button or \
-                                    event.ui_element == self.exception_msg.dismiss_button:
-                                self.set_static_mode()
-                    elif event.user_type == pygame_gui.UI_SELECTION_LIST_NEW_SELECTION:  # выбор элемента
-                        if event.ui_element == self.selection_list1:  # всплывающей активности
-                            if event.text == 'Информация':  # выдача информации о карте
-                                self.set_static_mode()
-                                self.get_card_info(self.first_cards.hand[self.first_cards.current])
-                            elif event.text == 'Переместить':  # переход в состояние перемещения карты
-                                self.set_move_mode(self.first_cards)
-                                self.card_is_moving = self.first_cards.hand[self.first_cards.current]
-                            else:  # возвращаемся в обычное состояние
-                                self.set_static_mode()
-                            self.selection_list1.kill()
-                        elif event.ui_element == self.selection_list2:
-                            if event.text == 'Информация':
-                                self.set_static_mode()
-                                self.get_card_info(self.second_cards.hand[self.second_cards.current])
-                            elif event.text == 'Переместить':
-                                self.set_move_mode(self.second_cards)
-                                self.card_is_moving = self.second_cards.hand[self.second_cards.current]
-                            else:
-                                self.set_static_mode()
-                            self.selection_list2.kill()
-                elif event.type == pygame.KEYDOWN:
-                    if not self.is_blocked:
-                        if event.key == pygame.K_ESCAPE:
-                            if self.mode == 'move':
-                                for battlepoint in self.battlepoints:  # если текущая карта была на точке
-                                    if self.card_is_moving in battlepoint:
+                                                if self.card_is_moving.get_sound():
+                                                    self.channel = self.card_is_moving.get_sound().play()
+                                                    self.channel.set_volume(CARD_VOLUME)
+                                            elif self.card_is_moving in self.second_cards.hand:
+                                                self.card_is_moving.move(self.second_cards,
+                                                                         self.battlepoint_is_getting)
+                                                if self.card_is_moving.get_sound():
+                                                    self.channel = self.card_is_moving.get_sound().play()
+                                                    self.channel.set_volume(CARD_VOLUME)
+                                            else:
+                                                for battlepoint in self.battlepoints:
+                                                    if self.card_is_moving in battlepoint:
+                                                        self.card_is_moving.move(battlepoint,
+                                                                                 self.battlepoint_is_getting)
+                                                        break
+                                            if self.card_is_moving in self.first_cards:
+                                                if self.first_cards.step == 0:  # обновление числа карт,
+                                                    self.first_cards.is_moved += 1
+                                                    # перемещённых в первом ходу
+                                            else:
+                                                if self.second_cards.step == 0:
+                                                    self.second_cards.is_moved += 1
+                                            self.set_static_mode()
+
+                                    else:  # подтверждение покупки бонусной карты
+                                        if self.first_cards.get_state():
+                                            self.first_cards.score -= 25  # тратим ОЗ
+                                            self.rising_card = self.first_cards.get_bonus()
+                                            # получаем случайную карту
+                                        else:
+                                            self.second_cards.score -= 25
+                                            self.rising_card = self.second_cards.get_bonus()
+                                        self.set_card_rise(self.rising_card)  # запуск анимации появления карты
+                                    self.confirm_dialog.kill()  # уничтожение диалогового окна
+                            elif event.user_type == pygame_gui.UI_BUTTON_PRESSED:
+                                for button in self.ui_buttons:
+                                    if button == event.ui_element and button.is_enabled:
+                                        self.mouse_click(button, True)
+                                if self.confirm_dialog:
+                                    if event.ui_element == self.confirm_dialog.cancel_button or \
+                                            event.ui_element == self.confirm_dialog.close_window_button:
                                         self.set_static_mode()
-                                        self.get_battlepoint_info(battlepoint)  # возвращаемся на точку
-                            else:
-                                self.get_main_menu()  # выдача главного меню
-                        elif event.key == pygame.K_SPACE:  # при нажатии на пробел
+                                        if self.card_is_moving in self.first_cards.hand:
+                                            self.set_move_mode(self.first_cards)
+                                        elif self.card_is_moving in self.second_cards.hand:
+                                            self.set_move_mode(self.second_cards)
+                                        else:
+                                            for battlepoint in self.battlepoints:
+                                                if self.card_is_moving in battlepoint:
+                                                    self.set_move_mode(battlepoint)
+                                        self.confirm_dialog.kill()
+                                if self.exception_msg:
+                                    if event.ui_element == self.exception_msg.close_window_button or \
+                                            event.ui_element == self.exception_msg.dismiss_button:
+                                        self.set_static_mode()
+                            elif event.user_type == pygame_gui.UI_SELECTION_LIST_NEW_SELECTION:
+                                # выбор элемента
+                                if event.ui_element == self.selection_list1:  # всплывающей активности
+                                    if event.text == 'Информация':  # выдача информации о карте
+                                        self.set_static_mode()
+                                        self.get_card_info(self.first_cards.hand[self.first_cards.current])
+                                    elif event.text == 'Переместить':  # переход в состояние перемещения карты
+                                        self.set_move_mode(self.first_cards)
+                                        self.card_is_moving = self.first_cards.hand[self.first_cards.current]
+                                    else:  # возвращаемся в обычное состояние
+                                        self.set_static_mode()
+                                    self.selection_list1.kill()
+                                elif event.ui_element == self.selection_list2:
+                                    if event.text == 'Информация':
+                                        self.set_static_mode()
+                                        self.get_card_info(self.second_cards.hand[self.second_cards.current])
+                                    elif event.text == 'Переместить':
+                                        self.set_move_mode(self.second_cards)
+                                        self.card_is_moving = self.second_cards.hand[self.second_cards.current]
+                                    else:
+                                        self.set_static_mode()
+                                    self.selection_list2.kill()
+                    elif event.type == pygame.KEYDOWN:
+                        if not self.is_blocked:
+                            if event.key == pygame.K_ESCAPE:
+                                if self.mode == 'move':
+                                    for battlepoint in self.battlepoints:  # если текущая карта была на точке
+                                        if self.card_is_moving in battlepoint:
+                                            if self.channel and self.channel.get_busy():
+                                                self.channel.stop()
+                                            self.set_static_mode()
+                                            self.get_battlepoint_info(battlepoint)  # возвращаемся на точку
+                                else:
+                                    if self.channel:
+                                        self.channel.stop()
+                                    self.get_main_menu()  # выдача главного меню
+                            elif event.key == pygame.K_SPACE:  # при нажатии на пробел
+                                if self.first_cards.get_state():
+                                    self.mouse_click(endstep_button1)  # заканчивается ход
+                                else:
+                                    self.mouse_click(endstep_button2)
+                    elif event.type == pygame.MOUSEMOTION:
+                        self.mouse_motion(event)
+                    elif event.type == pygame.MOUSEBUTTONDOWN:
+                        if event.button == pygame.BUTTON_LEFT:
+                            for button in self.buttons:
+                                if button.collidepoint(event.pos) and button.is_enabled:
+                                    self.mouse_click(button)
                             if self.first_cards.get_state():
-                                self.mouse_click(endstep_button1)  # заканчивается ход
-                            else:
-                                self.mouse_click(endstep_button2)
-                elif event.type == pygame.MOUSEMOTION:
-                    self.mouse_motion(event)
-                elif event.type == pygame.MOUSEBUTTONDOWN:
-                    if event.button == pygame.BUTTON_LEFT:
-                        for button in self.buttons:
-                            if button.collidepoint(event.pos) and button.is_enabled:
-                                self.mouse_click(button)
-                        if self.first_cards.get_state():
-                            if self.first_cards.hand:
-                                card = self.first_cards.hand[self.first_cards.current]
-                                if card.rect.collidepoint(event.pos) and card.is_enabled:
-                                    self.mouse_click(card)
-                        elif self.second_cards.get_state():
-                            if self.second_cards.hand:
-                                card = self.second_cards.hand[self.second_cards.current]
-                                if card.rect.collidepoint(event.pos) and card.is_enabled:
-                                    self.mouse_click(card)
-                self.manager.process_events(event)
+                                for card in self.first_cards:
+                                    if self.first_cards.hand:
+                                        if card == self.first_cards.hand[self.first_cards.current]:
+                                            if card.rect.collidepoint(event.pos) and card.is_enabled:
+                                                self.mouse_click(card)
+                                    if card not in self.first_cards.hand:
+                                        if card.rect.collidepoint(event.pos) and card.is_enabled:
+                                            self.mouse_click(card)
+                            elif self.second_cards.get_state():
+                                for card in self.second_cards:
+                                    if self.second_cards.hand:
+                                        if card == self.second_cards.hand[self.second_cards.current]:
+                                            if card.rect.collidepoint(event.pos) and card.is_enabled:
+                                                self.mouse_click(card)
+                                    if card not in self.second_cards.hand:
+                                        if card.rect.collidepoint(event.pos) and card.is_enabled:
+                                            self.mouse_click(card)
+                    self.manager.process_events(event)
+                except AttributeError:
+                    pass
             if len(self.first_cards) == 0 and len(self.second_cards) == 0:  # если у обеих фракций
+                draw_sound.play()
                 return FinalActivity('draw').run()  # уничтожены все карты, выдаём ничью
             if self.first_cards.score >= 100 or len(self.second_cards) == 0:  # победа 1 игрока
                 if self.first_cards.fraction == KONOHAGAKURE:
+                    konoha_win_sound.play()
                     return FinalActivity('konoha').run()
                 else:
+                    iva_win_sound.play()
                     return FinalActivity('iva').run()
             if self.second_cards.score >= 100 or len(self.first_cards) == 0:  # победа 2 игрока
                 if self.first_cards.fraction == KONOHAGAKURE:
+                    iva_win_sound.play()
                     return FinalActivity('iva').run()
                 else:
+                    konoha_win_sound.play()
                     return FinalActivity('konoha').run()
+            if self.flag and (self.first_cards.score - self.second_cards.score > 20 or
+                              len(self.first_cards) - len(self.second_cards) > 3):
+                self.flag = False
+                if self.first_cards.fraction == KONOHAGAKURE:
+                    self.channel = konoha_lead.play()
+                    self.channel.set_volume(CARD_VOLUME)
+                else:
+                    self.channel = iva_lead.play()
+                    self.channel.set_volume(CARD_VOLUME)
+            if self.flag1 and (self.second_cards.score - self.first_cards.score > 20 or
+                               len(self.second_cards) - len(self.first_cards) > 3):
+                self.flag1 = False
+                if self.second_cards.fraction == KONOHAGAKURE:
+                    self.channel = konoha_lead.play()
+                    self.channel.set_volume(CARD_VOLUME)
+                else:
+                    self.channel = iva_lead.play()
+                    self.channel.set_volume(CARD_VOLUME)
             self.manager.update(FPS)
             self.output()
             self.manager.draw_ui(screen)
@@ -1446,25 +1629,33 @@ class GameActivity(BasicActivity):
                 button.is_hovered = False
             if ui:
                 if view.rect == leftslide1 and self.first_cards.get_state():  # прокрутка карт в руке влево
-                    if self.first_cards.current == 0:
+                    if not self.first_cards.hand:
+                        self.first_cards.current = 0
+                    elif self.first_cards.current == 0:
                         self.first_cards.current = len(self.first_cards.hand) - 1
                     else:
                         self.first_cards.current -= 1
                     return
-                if view.rect == rightslide1 and self.first_cards.get_state():  # прокрутка карт в руке впрво
-                    if self.first_cards.current == len(self.first_cards.hand) - 1:
+                if view.rect == rightslide1 and self.first_cards.get_state():  # прокрутка карт в руке вправо
+                    if not self.first_cards.hand:
+                        self.first_cards.current = 0
+                    elif self.first_cards.current == len(self.first_cards.hand) - 1:
                         self.first_cards.current = 0
                     else:
                         self.first_cards.current += 1
                     return
                 if view.rect == leftslide2 and self.second_cards.get_state():
-                    if self.second_cards.current == 0:
+                    if not self.second_cards.hand:
+                        self.second_cards.current = 0
+                    elif self.second_cards.current == 0:
                         self.second_cards.current = len(self.second_cards.hand) - 1
                     else:
                         self.second_cards.current -= 1
                     return
                 if view.rect == rightslide2 and self.second_cards.get_state():
-                    if self.second_cards.current == len(self.second_cards.hand) - 1:
+                    if not self.second_cards.hand:
+                        self.second_cards.current = 0
+                    elif self.second_cards.current == len(self.second_cards.hand) - 1:
                         self.second_cards.current = 0
                     else:
                         self.second_cards.current += 1
@@ -1559,6 +1750,7 @@ class GameActivity(BasicActivity):
                     default_selection='–',
                     manager=self.manager)
                 self.block_board()
+                return
             if view in self.second_cards.hand:
                 self.selection_list2 = pygame_gui.elements.UISelectionList(
                     relative_rect=pygame.Rect(width // 2 + 40, 10, 80, 120),
@@ -1566,6 +1758,26 @@ class GameActivity(BasicActivity):
                     default_selection='–',
                     manager=self.manager)
                 self.block_board()
+                return
+            if view in self.first_cards or view in self.second_cards:
+                can_move = view.can_move()
+                if can_move == 'step1' or can_move == 'step':  # если это первый ход
+                    self.get_exception_message('В первом ходу нельзя дважды переместить'
+                                               ' одну карту!')
+                    self.block_board()
+                elif can_move == 'pace':  # если закончилась скорость
+                    self.get_exception_message('Вашему бойцу нужно отдохнуть...')
+                    self.block_board()
+                elif can_move == 'pace1':  # если не хватает скорости
+                    self.get_exception_message('Противники перекрыли все пути отступления!'
+                                               ' В таком состоянии нам не выбраться!')
+                    self.block_board()
+                else:
+                    """Установка режима перемещения, 
+                    передача текущей боевой точки и карты"""
+                    self.card_is_moving = view  # устанавливаем перемещаемую карту
+                    self.set_move_mode(view.point)
+                    return
         elif self.mode == 'move':  # только в состоянии перемещения карты!
             if view == self.card_is_moving:  # если повторно нажать на карту
                 self.set_static_mode()
@@ -1646,6 +1858,7 @@ class GameActivity(BasicActivity):
                     elif not play_board[i][j].is_hovered:  # остальные блокируем
                         play_board[i][j].is_enabled = False
             self.block_hand()
+            self.card_is_moving.is_enabled = True
 
     def set_card_rise(self, card):
         """Установка состояния появления карты на игровой активности"""
@@ -1696,25 +1909,22 @@ class GameActivity(BasicActivity):
         for button in self.ui_buttons:
             button.is_enabled = False
 
-    def get_main_menu(self):
-        """Запуск фрагмента главного меню"""
-        self.fragments[0].run()
-
-    def get_rules(self):
-        """Запуск фрагмента с правилами"""
-        self.fragments[1].run()
-
-    def get_help(self, num=0):
-        """Запуск фрагмента с правилами"""
-        if num:
-            self.fragments[-1].run()
-        else:
-            self.fragments[2].run()
-
     def get_card_info(self, card):
         """Запуск фрагмента с информацией о карте"""
         self.fragments[3].run(card)
 
     def get_battlepoint_info(self, battlepoint):
+        pygame.mixer.music.unload()
+        random.shuffle(battle_music)
+        load_music(BACK_MUSIC, battle_music[0])
+        for music in battle_music[1:]:
+            add_music(BACK_MUSIC, music)
+        pygame.mixer.music.play()
         battlepoint.info_fragment.run()  # выдача информации о боевой точке
+        pygame.mixer.music.unload()
+        random.shuffle(game_music)
+        load_music(BACK_MUSIC, game_music[0])
+        for music in game_music[1:]:
+            add_music(BACK_MUSIC, music)
+        pygame.mixer.music.play()
         battlepoint.update_card_draw()

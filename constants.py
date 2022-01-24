@@ -1,7 +1,8 @@
 import os
 import sqlite3
 import pygame
-from system_func import load_image
+import random
+from system_func import load_image, load_music, load_sound, add_music
 from gui_elements import Button, ImageButton
 
 """Основные константы"""
@@ -9,6 +10,8 @@ FRACTION = None  # выбранная фракция (Конохагакуре �
 KONOHAGAKURE = 'KONOHAGAKURE'
 IVAGAKURE = 'IVAGAKURE'
 FPS = 30  # частота смены кадров в секунду
+MAIN_VOLUME = 0.5  # громкость фоновой музыки
+CARD_VOLUME = 0.7  # громкость звуковых эффектов
 size = width, height = 480, 854  # размеры окна
 screen = pygame.display.set_mode(size)  # главный холст, на котором рисуются все окна
 clock = pygame.time.Clock()  # объект часов для управления временем
@@ -22,6 +25,10 @@ MAIN_FONT = os.path.join(FONTS, 'HanZi.ttf')  # основной текст
 CARDS = os.path.join('resources', 'cards')  # изображения карт
 BACK_N_BUT = os.path.join('resources', 'back_and_buttons')  # фоны и кнопки
 THEMES = os.path.join('resources', 'themes')  # темы
+MUSIC = os.path.join('resources', 'music')  # музыка
+C_VOICES = os.path.join(MUSIC, 'card_voices')  # озвучка карт
+GAME_EVENTS = os.path.join(MUSIC, 'game_events')  # звуковые эффекты в игре
+BACK_MUSIC = os.path.join(MUSIC, 'soundtracks')  # фоновая музыка
 
 icon = load_image(BACK_N_BUT, 'icon.png')  # иконка
 
@@ -65,9 +72,9 @@ play_button = Button((145, 630, 180, 100))  # кнопка "Играть" (->)
 exit_button = Button(width - 65, 15, 50, 50)  # кнопка "Выйти" ([х])
 escape_button = Button(15, 15, 80, 50)  # кнопка "Назад" (<-)
 ok_button = Button(165, height - 100, 150, 75)  # кнопка "ОК"
-rules_button = Button(width // 2 - 150, height // 2 - 160, 300, 100)  # кнопка "Правила"
-help_button = Button(width // 2 - 150, height // 2 - 40, 300, 100)  # кнопка "Помощь"
-terminate_button = Button(width // 2 - 150, height // 2 + 80, 300, 100)  # кнопка "Выйти"
+rules_button = Button(width // 2 - 150, height // 2 - 20, 300, 100)  # кнопка "Правила"
+help_button = Button(width // 2 - 150, height // 2 + 100, 300, 100)  # кнопка "Помощь"
+terminate_button = Button(width // 2 - 150, height // 2 + 220, 300, 100)  # кнопка "Выйти"
 menu_buttons = [escape_button, help_button, rules_button, terminate_button]  # список кнопок для главного меню
 
 """Игровые кнопки"""
@@ -134,3 +141,16 @@ help_txt = ''  # справка
 with open(os.path.join('data', 'help.txt'), encoding='utf8') as helps:
     help_txt = helps.read().split('\n')
 help_txt = ' '.join(help_txt)
+
+"""Инициализация аудио"""
+pygame.mixer.init()
+basic_music = ['basic.mp3', 'basic1.mp3', 'basic2.mp3', 'basic3.mp3']
+game_music = ['game.mp3', 'game1.mp3', 'game2.mp3']
+battle_music = ['battle.mp3', 'battle1.mp3']
+choose_konoha_sounds = [load_sound(GAME_EVENTS, 'konoha.wav'), load_sound(GAME_EVENTS, 'konoha1.wav')]
+choose_iva_sounds = [load_sound(GAME_EVENTS, 'iva.wav'), load_sound(GAME_EVENTS, 'iva1.wav')]
+konoha_lead = load_sound(GAME_EVENTS, 'konoha_lead.wav')
+iva_lead = load_sound(GAME_EVENTS, 'iva_lead.wav')
+konoha_win_sound = load_sound(GAME_EVENTS, 'konoha_win.wav')
+iva_win_sound = load_sound(GAME_EVENTS, 'iva_win.wav')
+draw_sound = load_sound(GAME_EVENTS, 'draw.wav')
