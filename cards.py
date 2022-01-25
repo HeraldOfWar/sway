@@ -80,12 +80,6 @@ class PlayCard(pygame.sprite.Sprite):
             return 'chakra'
         if self.is_healed:  # если карта уже принимала участие в поединке в этом ходу
             return 'is_healed'
-        if self.fraction == self.groups()[0].main_fraction:  # если нет союзников
-            if len(self.point.point1_cards) == 1:
-                return 'len_cards'
-        else:
-            if len(self.point.point2_cards) == 1:
-                return 'len_cards'
 
     def heal(self, friend):
         """Лечение"""
@@ -294,10 +288,10 @@ class PlayCard(pygame.sprite.Sprite):
     def get_abilities_info(self):
         "Возвращение информации о способностях карты"
         return '<b>Техника:</b><br />' + P_SECOND_INFO[self.id - 1][0][0], \
-               '<b>Пассивная способность:</b><br />' + P_SECOND_INFO[self.id - 1][0][1]
+               '<b>Способность:</b><br />' + P_SECOND_INFO[self.id - 1][0][1]
 
     def death(self):
-        """Создание осколков для разрушения карты"""
+        """Подготовка к анимации уничтожения карты"""
         for x in range(0, self.rect.width, self.rect.width // 5):
             for y in range(0, self.rect.height, self.rect.height // 5):
                 piece = CardPiece(self.image, (self.rect.x, self.rect.y), x, y, random.choice(range(-5, 6)),
@@ -1499,8 +1493,9 @@ class Teeru(PlayCard):
             self.damage += 1
         enemy.get_damage(self.damage, self)  # наносим урон противнику
         if not enemy.is_alive:
-            bonus = random.choice(konoha_bonusdeck.sprites())
-            konoha_bonusdeck.remove(bonus)
+            if konoha_bonusdeck.sprites():
+                bonus = random.choice(konoha_bonusdeck.sprites())
+                konoha_bonusdeck.remove(bonus)
         if self.chakra != 0:
             self.chakra -= 1  # тратим чакру
 
@@ -1640,12 +1635,14 @@ class I_leave(BonusCard):
 
     def bonus(self):
         """Активация эффекта: сжигает случайную карту-бонус у противника"""
-        if self.main_activity.first_cards.fraction == KONOHAGAKURE:
-            bonuscard = random.choice(self.main_activity.second_cards.bonus_deck.sprites())
-            self.main_activity.second_cards.bonus_deck.remove(bonuscard)
+        if self.groups()[0].main_fraction == self.fraction:
+            if self.main_activity.second_cards.bonus_deck.sprites():
+                bonuscard = random.choice(self.main_activity.second_cards.bonus_deck.sprites())
+                self.main_activity.second_cards.bonus_deck.remove(bonuscard)
         else:
-            bonuscard = random.choice(self.main_activity.first_cards.bonus_deck.sprites())
-            self.main_activity.first_cards.bonus_deck.remove(bonuscard)
+            if self.main_activity.first_cards.bonus_deck.sprites():
+                bonuscard = random.choice(self.main_activity.first_cards.bonus_deck.sprites())
+                self.main_activity.first_cards.bonus_deck.remove(bonuscard)
 
 
 """Классы бонусных карт Ивагакуре"""

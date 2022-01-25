@@ -45,6 +45,7 @@ class BasicActivity:
             if card.get_sound():  # если у карты есть озвучка
                 pygame.mixer.music.pause()  # останавливаем фоновую музыку
                 self.channel = card.get_sound().play()  # запускаем озвучку
+                self.channel.set_volume(CARD_VOLUME)
                 self.channel.set_endevent(MUSIC_END)  # и добавляем событие по её окончании
         elif card and (card in BONUSCARDS or card in OTHER_BCARDS):
             ability_info = card.get_ability_info()
@@ -55,6 +56,7 @@ class BasicActivity:
             if card.get_sound():
                 pygame.mixer.music.pause()
                 self.channel = card.get_sound().play()
+                self.channel.set_volume(CARD_VOLUME)
                 self.channel.set_endevent(MUSIC_END)
         while self.is_active:  # а вот и цикл!
             for event in pygame.event.get():  # pygame ждёт, чтобы пользователь что-то сделал
@@ -173,11 +175,13 @@ class BasicActivity:
         if view == konohagakure:
             FRACTION = KONOHAGAKURE  # выбрана фракция Конохагакуре
             sound = random.choice(choose_konoha_sounds)
+            sound.set_volume(CARD_VOLUME)
             sound.play()
             self.start_game_activity.run()  # запуск игровой активности
         if view == ivagakure:
             FRACTION = IVAGAKURE  # выбрана фракция Ивагакуре
             sound = random.choice(choose_iva_sounds)
+            sound.set_volume(CARD_VOLUME)
             sound.play()
             self.start_game_activity.run()
         if view == info_1:
@@ -264,6 +268,8 @@ class BasicActivity:
 
     def get_main_menu(self):
         """Запуск фрагмента главного меню"""
+        if self.channel and self.channel.get_busy():
+            self.channel.stop()
         self.fragments[0].main_activity = self
         self.fragments[0].run()
 
@@ -740,13 +746,12 @@ class BattleFragment(Fragment):
                                         self.set_static_mode()
                                         self.set_attack_mode()  # установка состояние атаки
                                         if self.current_card.get_attack_sound():  # запуск озвучки
+                                            if self.channel and self.channel.get_busy():
+                                                self.channel.stop()
                                             self.channel = self.current_card.get_attack_sound().play()
                                             self.channel.set_volume(CARD_VOLUME)
                                 elif event.text == 'Вылечить':  # переход в состояние поддержки
-                                    if self.current_card.can_heal() == 'len_cards':  # если нет союзников
-                                        self.get_exception_message('Скорее возвращайся к союзникам, здесь ты'
-                                                                   ' бесполезен!')
-                                    elif self.current_card.can_heal() == 'chakra':  # если нет чакры
+                                    if self.current_card.can_heal() == 'chakra':  # если нет чакры
                                         self.get_exception_message('Силы вашего бойца на исходе, '
                                                                    'пора возвращаться в деревню!')
                                     elif self.current_card.can_heal() == 'is_healed':  # если карта уже
@@ -792,8 +797,8 @@ class BattleFragment(Fragment):
                                                                    ' В таком состоянии нам не выбраться!')
                                     else:  # вывод подтверждения
                                         self.main_activity.card_is_moving = self.current_card
-                                        self.get_confirm_dialog('Подтверждение хода', f'Вы уверены, что хотите '
-                                                                                      f'переместить '
+                                        self.get_confirm_dialog('Подтверждение хода', f'Вы уверены, что хотите'
+                                                                                      f' переместить '
                                                                                       f'{self.current_card.name} '
                                                                                       f'в деревню (в "руку")?')
                                     self.block_battlepoint()
@@ -876,12 +881,10 @@ class BattleFragment(Fragment):
         if self.mode == 'heal':  # в режиме поддержки
             if self.main_activity.first_cards.get_state():  # воспроизводим анимацию "тряски" союзных карт
                 for card in self.battlepoint.point1_cards:
-                    if card != self.current_card:
-                        card.update()
+                    card.update()
             else:
                 for card in self.battlepoint.point2_cards:
-                    if card != self.current_card:
-                        card.update()
+                    card.update()
 
         screen.blit(self.screen2, (0, 0))  # отрисовка второго холста
         self.battlepoint.draw(screen)  # выдача информации о боевой точке
@@ -1090,6 +1093,9 @@ class BattleFragment(Fragment):
                     item_list.append('Способность')
                 if self.current_card.short_name == 'hiruko' and self.current_card.himera_is_active:
                     item_list.append('Химера')
+                if self.current_card.short_name == 'hiruko' and self.current_card.himera_is_used:
+                    if self.current_card.get_new_ability():
+                        item_list.append('Доп.способность')
                 if self.current_card.short_name == 'akito' and self.current_card.new_technic:
                     item_list.insert(1, 'Атаковать')
                 self.selection_list.set_item_list(item_list)
@@ -1117,10 +1123,7 @@ class BattleFragment(Fragment):
                                                                    f' {self.card_is_getting}?')
                 self.block_battlepoint()
         if self.mode == 'heal':  # только в состоянии поддержки!
-            if view == self.current_point:  # при нажатии на текущую карту возвращаемся в обычное состояние
-                self.set_static_mode()
-                return
-            elif view in self.buttons[1:]:  # выбор цели для нападения
+            if view in self.buttons[1:]:  # выбор цели для нападения
                 if self.current_card in self.main_activity.first_cards:
                     i = self.battlepoint.first_points.index(view)
                     self.card_is_getting = self.battlepoint.point1_cards[i]
@@ -1337,12 +1340,16 @@ class GameActivity(BasicActivity):
                                                 self.card_is_moving.move(self.first_cards,
                                                                          self.battlepoint_is_getting)
                                                 if self.card_is_moving.get_sound():  # запуск озвучки
+                                                    if self.channel and self.channel.get_busy():
+                                                        self.channel.stop()
                                                     self.channel = self.card_is_moving.get_sound().play()
                                                     self.channel.set_volume(CARD_VOLUME)  # установка громкости
                                             elif self.card_is_moving in self.second_cards.hand:
                                                 self.card_is_moving.move(self.second_cards,
                                                                          self.battlepoint_is_getting)
                                                 if self.card_is_moving.get_sound():  # запуск озвучки
+                                                    if self.channel and self.channel.get_busy():
+                                                        self.channel.stop()
                                                     self.channel = self.card_is_moving.get_sound().play()
                                                     self.channel.set_volume(CARD_VOLUME)  # установка громкости
                                             else:
@@ -1914,6 +1921,8 @@ class GameActivity(BasicActivity):
 
     def get_card_info(self, card):
         """Запуск фрагмента с информацией о карте"""
+        if self.channel and self.channel.get_busy():
+            self.channel.stop()
         self.fragments[3].run(card)
 
     def get_battlepoint_info(self, battlepoint):
@@ -1923,6 +1932,8 @@ class GameActivity(BasicActivity):
         for music in battle_music[1:]:
             add_music(BACK_MUSIC, music)
         pygame.mixer.music.play()
+        if self.channel and self.channel.get_busy():
+            self.channel.stop()
         battlepoint.info_fragment.run()  # выдача информации о боевой точке
         pygame.mixer.music.unload()
         random.shuffle(game_music)
