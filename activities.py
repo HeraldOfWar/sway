@@ -436,13 +436,12 @@ class MenuFragment(Fragment):
                             if event.ui_element == self.termination_dialog.cancel_button or \
                                     event.ui_element == self.termination_dialog.close_window_button:
                                 self.unblock_activity()
-                        if self.main_volume:  # изменение громкости фоновой музыки
-                            if event.ui_element == self.main_volume.sliding_button:
-                                MAIN_VOLUME = round(self.main_volume.get_current_value(), 2)
-                                pygame.mixer.music.set_volume(MAIN_VOLUME)
-                        if self.card_volume:  # изменение громкости звуковых эффектов
-                            if event.ui_element == self.card_volume.sliding_button:
-                                CARD_VOLUME = round(self.card_volume.get_current_value(), 2)
+                    elif event.user_type == pygame_gui.UI_HORIZONTAL_SLIDER_MOVED:
+                        if event.ui_element == self.main_volume:  # изменение громкости фоновой музыки
+                            MAIN_VOLUME = round(self.main_volume.get_current_value(), 2)
+                            pygame.mixer.music.set_volume(MAIN_VOLUME)
+                        if event.ui_element == self.card_volume:  # изменение громкости звуковых эффектов
+                            CARD_VOLUME = round(self.card_volume.get_current_value(), 2)
                 elif event.type == pygame.KEYDOWN:
                     if not self.is_blocked:
                         if event.key == pygame.K_ESCAPE:
