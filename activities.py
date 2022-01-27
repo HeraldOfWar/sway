@@ -88,6 +88,10 @@ class BasicActivity:
                             if self.channel:
                                 self.channel.stop()
                                 pygame.mixer.music.unpause()
+                            if self.ui_ability_info:
+                                self.ui_ability_info.kill()
+                            if self.ui_technic_info:
+                                self.ui_technic_info.kill()
                             if self.old_activity:
                                 return self.old_activity.run()
                             self.get_quit()
@@ -631,20 +635,21 @@ class BattleFragment(Fragment):
                                             if self.card_is_getting.is_alive:
                                                 # для способности Кентару и Икетани
                                                 if self.card_is_getting.short_name == 'kentaru' \
-                                                        and self.card_is_getting.passive_is_used:
+                                                        and self.card_is_getting.kicked.sprites():
                                                     self.card_is_getting.kicked.sprites()[0].direction = 'left'
-                                                if self.card_is_getting.short_name == 'iketani':
+                                                if self.card_is_getting.short_name == 'iketani' \
+                                                        and self.card_is_getting.kicked.sprites():
                                                     self.card_is_getting.kicked.sprites()[0].direction = 'left'
                                                 if self.card_is_getting.short_name == 'hiruko' and \
                                                         self.card_is_getting.himera_is_used and \
                                                         self.card_is_getting.himera_card.short_name \
                                                         == 'kentaru' \
-                                                        and self.card_is_getting.passive_is_used:
+                                                        and self.card_is_getting.kicked.sprites():
                                                     self.card_is_getting.kicked.sprites()[0].direction = 'left'
                                                 if self.card_is_getting.short_name == 'hiruko' and \
                                                         self.card_is_getting.himera_is_used and \
                                                         self.card_is_getting.himera_card.short_name \
-                                                        == 'iketani':
+                                                        == 'iketani' and self.card_is_getting.kicked.sprites():
                                                     self.card_is_getting.kicked.sprites()[0].direction = 'left'
                                 elif self.mode == 'heal':  # при подтверждении лечения
                                     if self.current_card.short_name == 'akito' and \
@@ -1483,7 +1488,7 @@ class GameActivity(BasicActivity):
                 else:
                     konoha_win_sound.play()
                     return FinalActivity('konoha').run()
-            if self.flag and (self.first_cards.score - self.second_cards.score > 20 or
+            if self.flag and (self.first_cards.score - self.second_cards.score > 35 or
                               len(self.first_cards) - len(self.second_cards) > 3):
                 self.flag = False
                 if self.first_cards.fraction == KONOHAGAKURE:
@@ -1492,7 +1497,7 @@ class GameActivity(BasicActivity):
                 else:
                     self.channel = iva_lead.play()
                     self.channel.set_volume(CARD_VOLUME)
-            if self.flag1 and (self.second_cards.score - self.first_cards.score > 20 or
+            if self.flag1 and (self.second_cards.score - self.first_cards.score > 35 or
                                len(self.second_cards) - len(self.first_cards) > 3):
                 self.flag1 = False
                 if self.second_cards.fraction == KONOHAGAKURE:

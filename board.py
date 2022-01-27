@@ -235,7 +235,8 @@ class Deck(pygame.sprite.Group):
 
     def get_bonus(self):
         """Выпадение бонусной карты"""
-        card = random.choice(self.bonus_deck.sprites())  # случайный выбор карты из колоды
-        card.bonus()  # активация эффекта карты
-        self.bonus_deck.remove(card)
-        return card
+        if self.bonus_deck:
+            card = random.choice(self.bonus_deck.sprites())  # случайный выбор карты из колоды
+            card.bonus()  # активация эффекта карты
+            self.bonus_deck.remove(card)
+            return card

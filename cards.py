@@ -46,7 +46,7 @@ class PlayCard(pygame.sprite.Sprite):
 
     def can_attack(self):
         """Проверка на возможность атаковать противника"""
-        if self.chakra == 0:  # если закончилась чакра
+        if self.chakra <= 0:  # если закончилась чакра
             return 'chakra'
         if self.is_attacked:  # если карта уже принимала участие в поединке в этом ходу
             return 'is_attacked'
@@ -71,12 +71,12 @@ class PlayCard(pygame.sprite.Sprite):
                 enemy.technic[1] == 'Ниндзюцу':
             self.damage += 1
         enemy.get_damage(self.damage, self)  # наносим урон противнику
-        if self.chakra != 0:
+        if self.chakra > 0:
             self.chakra -= 1  # тратим чакру
 
     def can_heal(self):
         """Проверка на возможность вылечить союзника"""
-        if self.chakra == 0:  # если закончилась чакра
+        if self.chakra <= 0:  # если закончилась чакра
             return 'chakra'
         if self.is_healed:  # если карта уже принимала участие в поединке в этом ходу
             return 'is_healed'
@@ -88,7 +88,8 @@ class PlayCard(pygame.sprite.Sprite):
         else:
             friend.current_health += int(self.technic[0])
         self.is_healed = True
-        self.chakra -= 1
+        if self.chakra > 0:
+            self.chakra -= 1
 
     def can_move(self, new_point=None):
         "Проверка на возможность переместить карту"
@@ -725,13 +726,12 @@ class Kentaru(PlayCard):
                 enemy.technic[1] == 'Ниндзюцу':
             self.damage += 1
         enemy.get_damage(self.damage, self)  # наносим урон противнику
-        if self.chakra != 0:
+        if self.chakra > 0:
             self.chakra -= 1  # тратим чакру
 
         self.passive_is_used = random.randint(0, 1)
         if self.passive_is_used and enemy.is_alive:  # если противник жив!
             points = []  # список доступных точек
-            self.kicked.add(KickedCard(enemy, 'right'))  # создаём вылетевшую карту
             for i in range(len(play_board)):
                 for j in range(len(play_board)):
                     if self.point.view == play_board[i][j]:  # подсвечиваем все ближайшие точки
@@ -757,7 +757,9 @@ class Kentaru(PlayCard):
                     else:
                         if len(point.point1_cards) < 3:
                             points.append(point)
-            enemy.move(self.point, random.choice(points))  # перемещение вражеской карты на случайную точку
+            if points:
+                self.kicked.add(KickedCard(enemy, 'right'))  # создаём вылетевшую карту
+                enemy.move(self.point, random.choice(points))  # перемещение вражеской карты на случайную точку
 
 
 class Hiruko(PlayCard):
@@ -783,7 +785,10 @@ class Hiruko(PlayCard):
         self.passive_is_used1 = True
         for card in OTHER_BCARDS:
             if card.short_name == 'i_leave':  # добавление карты "Я ухожу!" в колоду бонусов противника
-                iva_bonusdeck.add(card)
+                if self.groups()[0].main_fraction == self.fraction:
+                    self.point.info_fragment.main_activity.second_cards.bonus_deck.add(card)
+                else:
+                    self.point.info_fragment.main_activity.first_cards.bonus_deck.add(card)
                 self.point.info_fragment.close()
                 self.point.info_fragment.main_activity.set_card_rise(card)  # анимация появления
 
@@ -897,7 +902,7 @@ class Hiruko(PlayCard):
         if (self.technic[1] == 'Тайдзюцу' or self.technic[1] == 'Кендзюцу') and \
                 enemy.technic[1] == 'Ниндзюцу':
             self.damage += 1
-        if self.chakra != 0:
+        if self.chakra > 0:
             self.chakra -= 1  # тратим чакру
         if self.himera_is_used and self.himera_card.short_name == 'keiko':
             if self.passive_is_used:
@@ -1135,7 +1140,8 @@ class Hiruko(PlayCard):
             enemy.resist = 0
         else:
             enemy.resist -= 2
-        self.chakra -= 1
+        if self.chakra > 0:
+            self.chakra -= 1
 
 
 class Iketani(Kentaru):
@@ -1162,7 +1168,7 @@ class Iketani(Kentaru):
                 enemy.technic[1] == 'Ниндзюцу':
             self.damage += 1
         enemy.get_damage(self.damage, self)  # наносим урон противнику
-        if self.chakra != 0:
+        if self.chakra > 0:
             self.chakra -= 1  # тратим чакру
 
         if enemy.is_alive:
@@ -1193,7 +1199,9 @@ class Iketani(Kentaru):
                     else:
                         if len(point.point1_cards) < 3:
                             points.append(point)
-            enemy.move(self.point, random.choice(points))
+            if points:
+                self.kicked.add(KickedCard(enemy, 'right'))  # создаём вылетевшую карту
+                enemy.move(self.point, random.choice(points))  # перемещение вражеской карты на случайную точку
 
 
 class Jerry(PlayCard):
@@ -1232,7 +1240,8 @@ class Jerry(PlayCard):
             enemy.resist = 0
         else:
             enemy.resist -= 2
-        self.chakra -= 1
+        if self.chakra > 0:
+            self.chakra -= 1
 
 
 """Классы игровых карт Ивагакуре"""
@@ -1274,6 +1283,8 @@ class Keiko(PlayCard):
         if (self.technic[1] == 'Тайдзюцу' or self.technic[1] == 'Кендзюцу') and \
                 enemy.technic[1] == 'Ниндзюцу':
             self.damage += 1
+        if self.chakra > 0:
+            self.chakra -= 1
         if self.passive_is_used:
             enemy.get_damage(self.damage * 3, self)  # наносим урон противнику
             self.current_health = 0
@@ -1493,10 +1504,17 @@ class Teeru(PlayCard):
             self.damage += 1
         enemy.get_damage(self.damage, self)  # наносим урон противнику
         if not enemy.is_alive:
-            if konoha_bonusdeck.sprites():
-                bonus = random.choice(konoha_bonusdeck.sprites())
-                konoha_bonusdeck.remove(bonus)
-        if self.chakra != 0:
+            if self.groups()[0].main_fraction == self.fraction:
+                if self.point.info_fragment.main_activity.second_cards.bonus_deck.sprites():
+                    bonus = random.choice(self.point.info_fragment.main_activity.
+                                          second_cards.bonus_deck.sprites())
+                    self.point.info_fragment.main_activity.second_cards.bonus_deck.remove(bonus)
+            else:
+                if self.point.info_fragment.main_activity.first_cards.bonus_deck.sprites():
+                    bonus = random.choice(self.point.info_fragment.main_activity.
+                                          first_cards.bonus_deck.sprites())
+                    self.point.info_fragment.main_activity.first_cards.bonus_deck.remove(bonus)
+        if self.chakra > 0:
             self.chakra -= 1  # тратим чакру
 
 
@@ -1635,13 +1653,17 @@ class I_leave(BonusCard):
 
     def bonus(self):
         """Активация эффекта: сжигает случайную карту-бонус у противника"""
-        if self.groups()[0].main_fraction == self.fraction:
-            if self.main_activity.second_cards.bonus_deck.sprites():
-                bonuscard = random.choice(self.main_activity.second_cards.bonus_deck.sprites())
+        if self.main_activity.first_cards.main_fraction == self.fraction:
+            if len(self.main_activity.second_cards.bonus_deck.sprites()) > 1:
+                bonuscard = self
+                while bonuscard == self:
+                    bonuscard = random.choice(self.main_activity.second_cards.bonus_deck.sprites())
                 self.main_activity.second_cards.bonus_deck.remove(bonuscard)
         else:
-            if self.main_activity.first_cards.bonus_deck.sprites():
-                bonuscard = random.choice(self.main_activity.first_cards.bonus_deck.sprites())
+            if len(self.main_activity.first_cards.bonus_deck.sprites()) > 1:
+                bonuscard = self
+                while bonuscard == self:
+                    bonuscard = random.choice(self.main_activity.first_cards.bonus_deck.sprites())
                 self.main_activity.first_cards.bonus_deck.remove(bonuscard)
 
 
@@ -1726,6 +1748,12 @@ class Ambitions(BonusCard):
         """Активация эффекта: уничтожение Кеико и всех карт,
         находившихся с ним на одной точке."""
         if self.main_activity.first_cards.main_fraction == KONOHAGAKURE:
+            for card in self.main_activity.second_cards:
+                if card.short_name == 'keiko':
+                    if card in self.main_activity.second_cards.hand:
+                        self.main_activity.second_cards.hand.remove(card)
+                        card.kill()
+                        break
             for battlepoint in self.main_activity.battlepoints:
                 if len(battlepoint.point2_cards) > 0:
                     for i in range(len(battlepoint.point2_cards)):
@@ -1744,6 +1772,12 @@ class Ambitions(BonusCard):
                             battlepoint.point2_cards.clear()
                             break
         else:
+            for card in self.main_activity.first_cards:
+                if card.short_name == 'keiko':
+                    if card in self.main_activity.first_cards.hand:
+                        self.main_activity.first_cards.hand.remove(card)
+                        card.kill()
+                        break
             for battlepoint in self.main_activity.battlepoints:
                 if len(battlepoint.point1_cards) > 0:
                     for i in range(len(battlepoint.point1_cards)):
