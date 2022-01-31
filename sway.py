@@ -238,6 +238,7 @@ def main():
 
 if __name__ == '__main__':
     pygame.init()  # инициализация pygame
+    pygame.version.ver = VERSION
     pygame.display.set_icon(icon)  # установка иконки игры
     pygame.display.set_caption('SWAY')  # установка названия
 

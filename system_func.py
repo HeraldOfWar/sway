@@ -3,7 +3,7 @@ import os
 import pygame
 
 
-def load_image(directory, name, colorkey=None):
+def load_image(directory, name):
     """Загрузка изображений"""
     fullname = os.path.join(directory, name)  # путь к изображению
     if not os.path.isfile(fullname):  # если указанный путь неверный, осуществляется выход из игры

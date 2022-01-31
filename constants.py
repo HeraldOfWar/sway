@@ -6,6 +6,7 @@ from system_func import load_image, load_music, load_sound, add_music
 from gui_elements import Button, ImageButton
 
 """Основные константы"""
+VERSION = '1.0.0'  # версия игры
 FRACTION = None  # выбранная фракция (Конохагакуре или Ивагакуре)
 KONOHAGAKURE = 'KONOHAGAKURE'
 IVAGAKURE = 'IVAGAKURE'
@@ -42,8 +43,11 @@ k_battlefield = load_image(BACK_N_BUT, 'main_battlefield.jpg')  # игровое
 i_battlefield = pygame.transform.rotate(k_battlefield, 180)  # игровое поле при выборе Ивагакуре
 konoha_bonus = load_image(BACK_N_BUT, 'konoha_bonus.jpg')  # рубашка карт Конохагакуре
 iva_bonus = load_image(BACK_N_BUT, 'iva_bonus.jpg')  # рубашка карт Ивагакуре
+
+"""Изображения для вывода результата игры"""
+# победа одной из фракций
 konoha_win, iva_win = load_image(BACK_N_BUT, 'konoha_win.png'), load_image(BACK_N_BUT, 'iva_win.png')
-draw_back = load_image(BACK_N_BUT, 'draw.jpg')
+draw_back = load_image(BACK_N_BUT, 'draw.jpg')  # ничья
 
 """Фоны для боевых точек"""
 img_konoha_pass1 = load_image(BACK_N_BUT, 'konoha_pass1.jpg')  # перевал 1 (Коноха)
