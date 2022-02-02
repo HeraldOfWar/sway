@@ -31,7 +31,7 @@ C_VOICES = os.path.join(MUSIC, 'card_voices')  # озвучка карт
 GAME_EVENTS = os.path.join(MUSIC, 'game_events')  # звуковые эффекты в игре
 BACK_MUSIC = os.path.join(MUSIC, 'soundtracks')  # фоновая музыка
 
-icon = load_image(BACK_N_BUT, 'icon.png')  # иконка
+icon = load_image(BACK_N_BUT, 'icon.jpg')  # иконка
 
 """Фоны и кнопки"""
 start_back = load_image(BACK_N_BUT, 'start_background.jpg')  # стартовый фон
