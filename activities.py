@@ -302,7 +302,7 @@ class FinalActivity(BasicActivity):
 
     def __init__(self, result):
         """Инициализация финального окна"""
-        super().__init__(basic_back, [ok_button])
+        super().__init__(basic_back, buttons=[ok_button])
         self.result = result  # результат игры
 
     def output(self):
@@ -406,7 +406,11 @@ class Fragment(BasicActivity):
                 manager=self.manager)
 
     def get_quit(self):
-        self.is_active = False
+        if self.old_activity:
+            self.is_active = False
+            self.old_activity.run()
+        else:
+            self.is_active = False
 
 
 class MenuFragment(Fragment):
@@ -767,6 +771,11 @@ class BattleFragment(Fragment):
                                     else:
                                         self.set_static_mode()
                                         self.set_heal_mode()  # установка состояние поддержки
+                                        if self.current_card.short_name == 'akito':  # запуск озвучки
+                                            if self.channel and self.channel.get_busy():
+                                                self.channel.stop()
+                                            self.channel = self.current_card.get_heal_sound().play()
+                                            self.channel.set_volume(CARD_VOLUME)
                                 elif event.text == 'Переместить':  # переход в состояние перемещения карты
                                     can_move = self.current_card.can_move()
                                     if can_move == 'step1' or can_move == 'step':  # если это первый ход
@@ -819,6 +828,11 @@ class BattleFragment(Fragment):
                                         self.set_use_ability_mode()  # установка режима
                                     else:
                                         self.current_card.ability()  # использование способности
+                                        if self.current_card.short_name == 'akito':
+                                            if self.channel and self.channel.get_busy():
+                                                self.channel.stop()
+                                            self.channel = self.current_card.get_owl_sound().play()
+                                            self.channel.set_volume(CARD_VOLUME)
                                 elif event.text == 'Химера':  # использование Химеры
                                     self.current_card.get_himera()
                                 elif event.text == 'Доп.способность':  # использование доп.способности Хируко

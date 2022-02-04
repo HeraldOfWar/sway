@@ -301,6 +301,8 @@ class PlayCard(pygame.sprite.Sprite):
                 piece = CardPiece(self.image, (self.rect.x, self.rect.y), x, y, random.choice(range(-5, 6)),
                                   random.choice(range(-5, 10)), self.pieces)
         if self.death_sounds:
+            if self.point.info_fragment.channel and self.point.info_fragment.channel.get_busy():
+                self.point.info_fragment.channel.stop()
             my_sound = random.choice(self.death_sounds)
             self.point.info_fragment.channel = my_sound.play()
             self.point.info_fragment.channel.set_volume(CARD_VOLUME)
@@ -420,7 +422,7 @@ class KickedCard(pygame.sprite.Sprite):
     def update(self):
         """Анимация выброса карты"""
         if self.direction == 'right':  # вправо
-            self.rect.x += 50
+            self.rect.right += 50
         if self.direction == 'left':  # влево
             self.rect.x -= 50
         if not self.rect.colliderect(screen.get_rect()):
@@ -1214,7 +1216,6 @@ class Iketani(Kentaru):
 
         if enemy.is_alive:
             points = []
-            self.kicked.add(KickedCard(enemy, 'right'))
             for i in range(len(play_board)):
                 for j in range(len(play_board)):
                     if self.point.view == play_board[i][j]:  # подсвечиваем все ближайшие точки
@@ -1349,6 +1350,8 @@ class Akito(PlayCard):
         self.sounds = [load_sound(C_VOICES, 'akito.wav')]
         self.attack_sounds = [load_sound(C_VOICES, 'attack_akito.wav')]
         self.death_sounds = [load_sound(C_VOICES, 'death_akito.wav')]
+        self.heal_sounds = [load_sound(C_VOICES, 'heal_akito.wav')]
+        self.owl_sound = [load_sound(C_VOICES, 'owl.wav')]
 
     def get_ability(self):  # способность доступна 1 раз за ход
         if not self.passive_is_used and self.chakra > 0:
@@ -1377,6 +1380,11 @@ class Akito(PlayCard):
             self.point.info_fragment.main_activity.card_is_moving = friend
             self.point.info_fragment.main_activity.set_move_mode(self.point)
             self.point.info_fragment.set_static_mode()
+            my_sound = random.choice(self.owl_sound)
+            if self.point.info_fragment.channel and self.point.info_fragment.channel.get_busy():
+                self.point.info_fragment.channel.stop()
+            self.point.info_fragment.channel = my_sound.play()
+            self.point.info_fragment.channel.set_volume(CARD_VOLUME)
         else:
             if friend.current_health + int(self.technic[0]) > friend.health_capacity:
                 friend.current_health = friend.health_capacity
@@ -1384,6 +1392,11 @@ class Akito(PlayCard):
                 friend.current_health += int(self.technic[0])
             self.is_healed = True
             self.chakra -= 1
+            my_sound = random.choice(self.heal_sounds)
+            if self.point.info_fragment.channel and self.point.info_fragment.channel.get_busy():
+                self.point.info_fragment.channel.stop()
+            self.point.info_fragment.channel = my_sound.play()
+            self.point.info_fragment.channel.set_volume(CARD_VOLUME)
 
     def set_damage(self):
         """Установка урона"""
@@ -1430,6 +1443,18 @@ class Akito(PlayCard):
                             if card.himera_card.short_name == 'benkei' and card.himera_card.passive_is_used:
                                 return damage + 1
         return damage  # возвращаем урон
+
+    def get_heal_sound(self):
+        if self.heal_sounds:
+            my_sound = random.choice(self.heal_sounds)
+            return my_sound
+        return None
+
+    def get_owl_sound(self):
+        if self.owl_sound:
+            my_sound = random.choice(self.owl_sound)
+            return my_sound
+        return None
 
 
 class Ryu(PlayCard):

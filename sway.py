@@ -139,8 +139,6 @@ def game_init():
     cf_activity.start_game_activity = game_activity
     info_activity.next_activity = card_info_activity
     card_info_activity.previous_activity = info_activity
-    for fragment in fragments:
-        fragment.main_activity = game_activity
     for fragment in fragments[1:]:
         fragment.fragments = fragments
 
