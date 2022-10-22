@@ -6,4 +6,4 @@ SWAY PC Version (Shinobi Way Card Game)
 
 +79004731088
 rusl.babae@yandex.ru
-Russian Federation, city Tver
+Russian Federation, city Saint-Petersburg
